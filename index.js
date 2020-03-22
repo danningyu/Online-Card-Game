@@ -31,6 +31,7 @@ let sockIDtoPlayer = {};
 let currentStarter = undefined; //type: Player
 let currTrumpSuit = ""; //type: string 
 // ("clubs", "diamonds", "hearts", "spades", "notrump")
+let currTrumpRank = "3";
 
 // ** For dealing cards
 let currCard = 0;
@@ -80,7 +81,6 @@ class Player{
 
     addCardToHand(cardObj){
         this.m_cards[cardObj.suit].push(cardObj);
-        // console.log("After insertion:");
         this.sortCurrCards();
         // this.printCurrCards();
     }
@@ -107,23 +107,83 @@ class Player{
     }
 
     sortCurrCards(){
-        // console.log(Object.keys(this.m_cards));
-        // for(let i = 0; i<this.m_cards.keys().length; i++){
-
-        // }
         Object.keys(this.m_cards).forEach(suit => {
             this.m_cards[suit].sort(function(a, b){
                 return (constants.ordering[a.rank] - constants.ordering[b.rank]);
             });
         });
+
+        //further sorting if we know trump rank and suit
+        if(currTrumpSuit !== "" && currTrumpRank !== ""){
+
+            //save and sort jokers
+            var jokers = [];
+            for(let i = 0; i<this.m_cards["trumps"].length; i++){
+                if(this.m_cards["trumps"][i].rank === "red_joker" || 
+                this.m_cards["trumps"][i].rank === "black_joker"){
+                    jokers.push(this.m_cards["trumps"][i]);
+                }
+            }
+            jokers.sort(function(a,b){
+                return a.rank > b.rank;
+            })
+    
+            this.m_cards["trumps"] = []; //clear out all trump cards
+            
+            var adjustedTrumps = [];
+            if(currTrumpSuit !== "notrump"){
+                for(let i = 0; i<this.m_cards[currTrumpSuit].length; i++){
+                    if(this.m_cards[currTrumpSuit][i].rank !== currTrumpRank){
+                        //this if to avoid double counting card that is 
+                        //trump rank and trump suit
+                        adjustedTrumps.push(this.m_cards[currTrumpSuit][i]);
+                    }
+                    
+                }
+            }
+            var trumpRankAndSuit = [];
+            Object.keys(this.m_cards).forEach(suit => {
+                this.m_cards[suit].forEach(card => {
+                    if(card.rank === currTrumpRank){
+                        if(card.suit === currTrumpSuit){
+                            trumpRankAndSuit.push(card);
+                        }
+                        else{
+                            adjustedTrumps.push(card);
+                        }
+                    }
+                });
+            });
+    
+            trumpRankAndSuit.forEach(card =>{
+                adjustedTrumps.push(card);
+            })
+    
+            jokers.forEach(card =>{
+                adjustedTrumps.push(card);
+            })
+    
+            this.m_cards["trumps"] = adjustedTrumps;
+            // console.log(this.m_cards["trumps"]);
+        }
+        
     }
 
     flattenCardArrayRetString(){
         let result = [];
         let allSuits = Object.keys(this.m_cards);
         for(let i = 0; i<allSuits.length; i++){
-            for(let j = 0; j<this.m_cards[allSuits[i]].length; j++){
-                result.push(constants.cardObjToStr(this.m_cards[allSuits[i]][j]));
+            if(allSuits[i] !== currTrumpSuit){ //copy 3 suits + trump suit                
+                for(let j = 0; j<this.m_cards[allSuits[i]].length; j++){
+                    if(allSuits[i] === "trumps"){
+                        // console.log("In flatten cards");
+                        // console.log(this.m_cards[allSuits[i]]);
+                        result.push(constants.cardObjToStr(this.m_cards[allSuits[i]][j]));
+                    }
+                    else if(this.m_cards[allSuits[i]][j].rank !== currTrumpRank){
+                        result.push(constants.cardObjToStr(this.m_cards[allSuits[i]][j]));
+                    }                
+                }
             }
         }
         // console.log(result);
@@ -270,6 +330,8 @@ io.on('connection', function(socket){
             currCard += 1;
         }
         else{
+            sockIDtoPlayer[sockId].sortCurrCards();
+            socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
             console.log("No more cards to draw!");
         }      
     });
@@ -297,7 +359,8 @@ io.on('connection', function(socket){
         }
     });
 
-    socket.on('set game settings', function(starterChecked, trumpSuit){
+    socket.on('set game settings', function(starterChecked, trumpSuit, trumpRank){
+        console.log(starterChecked + " " + trumpSuit);
         if(starterChecked === "starter"){
             currentStarter = sockIDtoPlayer[socket.id];
             io.emit('chat message', 'Player ' + sockIDtoPlayer[socket.id].getName() + " is now the starter");
@@ -307,6 +370,11 @@ io.on('connection', function(socket){
             currTrumpSuit = trumpSuit;
             io.emit('chat message', "The trump suit is now " + trumpSuit);
             io.emit('set trump suit', trumpSuit);
+        }
+        if(trumpRank !== undefined && trumpRank !== ""){
+            currTrumpRank = trumpRank;
+            io.emit('chat message', "The trump rank is now " + trumpRank);
+            io.emit('set trump rank', trumpRank);
         }
     });
 

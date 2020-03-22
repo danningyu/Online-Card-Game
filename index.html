@@ -25,7 +25,7 @@
             
         </form>
         <form id="form2">
-            <button id="draw" disabled>Draw Card</button>
+            <button id="draw" disabled>Draw Card (or sort hand)</button>
             <!-- <input id ="box2" autocomplete="off"/> -->
         </form>
         <form id="form3">
@@ -48,9 +48,27 @@
         <label for="spadesTrump">Spades</label><br>
         <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
         <label for="notrumpTrump">No Trump</label><br>
+        Trump Rank
+        <select id="trumpRank" name="trumpRank2">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="jack">Jack</option>
+            <option value="queen">Queen</option>
+            <option value="king">King</option>
+            <option value="ace">Ace</option>
+        </select><br>
         <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
         <button id="drawKitty" type="submit" disabled>Draw Kitty Cards</button>
         <button id="setAsideKitty" type="submit" disabled>Set Aside Kitty Cards</button>
+        
+
         <img style="display:none" id="img1" src="" class="ogimage"/>
 
         <div id="arrayImages" class="hi2"></div>
@@ -120,13 +138,16 @@
                     e.preventDefault();
                     var isChecked = $('#starterCheckbox:checked').val();
                     var trumpSuit = $("input:radio[name='trumpSuit']:checked").val();
+                    var selTrumpRank = $('#trumpRank').val();
+                    console.log(selTrumpRank);
                     // console.log($('#starterCheckbox:checked').val());
                     // console.log($("input:radio[name='trumpSuit']:checked").val());
                     // console.log("Submitted form");
                     if(isChecked === "starter"){
                         document.getElementById("drawKitty").disabled = false;
                     }
-                    socket.emit('set game settings', isChecked, trumpSuit);
+
+                    socket.emit('set game settings', isChecked, trumpSuit, selTrumpRank);
                 });
 
                 $('#drawKitty').click(function(e){
@@ -172,6 +193,10 @@
                 socket.on('set trump suit', function(trumpSuit){
                     var radioButton = document.getElementById(trumpSuit+"Trump");
                     radioButton.click();
+                });
+
+                socket.on('set trump rank', function(inputTrumpRank){
+                    $('#trumpRank').val(inputTrumpRank);
                 });
 
                 socket.on('chat message', function(msg){
