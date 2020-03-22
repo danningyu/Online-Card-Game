@@ -21,7 +21,7 @@
     <body>
         <ul id="messages"></ul>
         <form action="" id="form1">
-            <input id="m" autocomplete="off" /><button>Send</button>
+            <input id="m" autocomplete="off"/><button>Send</button>
             
         </form>
         <form id="form2">
@@ -34,19 +34,32 @@
         <form id="form4">
             <button id="undo" disabled>Undo Previous Play</button>
         </form>
-
+        <!-- <form id="gameSettings"> -->
+        <h3>Game Settings</h3>
+        <label><input type="checkbox" id="starterCheckbox" value="starter">I am the starter</label><br>
+        Trump Suit<br>
+        <input type="radio" id="clubsTrump" name="trumpSuit" value="clubs">
+        <label for="clubsTrump">Clubs</label><br>
+        <input type="radio" id="diamondsTrump" name="trumpSuit" value="diamonds">
+        <label for="diamondsTrump">Diamonds</label><br>
+        <input type="radio" id="heartsTrump" name="trumpSuit" value="hearts">
+        <label for="heartsTrump">Hearts</label><br>
+        <input type="radio" id="spadesTrump" name="trumpSuit" value="spades">
+        <label for="spadesTrump">Spades</label><br>
+        <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
+        <label for="notrumpTrump">No Trump</label><br>
+        <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
+        <button id="drawKitty" type="submit" disabled>Draw Kitty Cards</button>
+        <button id="setAsideKitty" type="submit" disabled>Set Aside Kitty Cards</button>
         <img style="display:none" id="img1" src="" class="ogimage"/>
-        <div id="arrayImages" class="hi2">
-            <!-- <img src="3_of_clubs.png" />
-            <img  src="4_of_clubs.png" />
-            <img  src="5_of_clubs.png" /> -->
 
-        </div>
+        <div id="arrayImages" class="hi2"></div>
 
         <script>
             $(function () {
                 var socket = io();
                 var playedCardHistory = []; //stack for "undos"
+                var kittySizeClient = -1; //kitty size, transmitted by server
                 $('#form1').submit(function(e){
                     //for chatting
                     e.preventDefault(); // prevents page reloading
@@ -103,12 +116,71 @@
                     socket.emit('undo card play', lastPlayedCards);
                 });
 
+                $('#updateSettings').click(function(e){
+                    e.preventDefault();
+                    var isChecked = $('#starterCheckbox:checked').val();
+                    var trumpSuit = $("input:radio[name='trumpSuit']:checked").val();
+                    // console.log($('#starterCheckbox:checked').val());
+                    // console.log($("input:radio[name='trumpSuit']:checked").val());
+                    // console.log("Submitted form");
+                    if(isChecked === "starter"){
+                        document.getElementById("drawKitty").disabled = false;
+                    }
+                    socket.emit('set game settings', isChecked, trumpSuit);
+                });
+
+                $('#drawKitty').click(function(e){
+                    console.log("Attempting to draw kitty");
+                    e.preventDefault();
+                    socket.emit('draw kitty', socket.id);
+                });
+
+                $('#setAsideKitty').click(function(e){
+                    e.preventDefault();
+                    if($(".hi2 img.active").length !== 0 && $(".hi2 img.active").length === kittySizeClient){
+                        var cardsToPlay = [];
+                        const arrayImagesElement = document.getElementById("arrayImages");
+                        //console.log(socket.id + " played card(s): ");
+                        for(let i = 0; i< $(".hi2 img.active").length; i++){
+                            // console.log($(".hi2 img.active")[i].id);
+                            cardsToPlay.push($(".hi2 img.active")[i].id);
+                            
+                        }
+                        for(let i = 0; i<cardsToPlay.length; i++){
+                            arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
+                        }
+                        playedCardHistory.push(cardsToPlay);
+                        document.getElementById("undo").disabled = false;
+                        socket.emit('set aside kitty', cardsToPlay);
+                    }
+                });
+
+                socket.on('kitty no draw yes set aside', function(kittySize){
+                    document.getElementById("drawKitty").disabled = true;
+                    document.getElementById("setAsideKitty").disabled = false;
+                    kittySizeClient = kittySize;
+                });
+
+                socket.on('uncheck starter', function(){
+                    $("#starterCheckbox").prop("checked", false);
+                    document.getElementById("drawKitty").disabled = true;
+                    // $("#starterCheckbox").click();
+                    // for jquery verions <1.6
+                    // $("#starterCheckbox").attr("checked", false);
+                });
+
+                socket.on('set trump suit', function(trumpSuit){
+                    var radioButton = document.getElementById(trumpSuit+"Trump");
+                    radioButton.click();
+                });
+
                 socket.on('chat message', function(msg){
                     $('#messages').append($('<div>').text(msg));
                     if(msg.indexOf("SUCCESS") !== -1){
                         //okay if this executes again
                         document.getElementById("draw").disabled = false;
                         document.getElementById("play").disabled = false;
+                        document.getElementById("updateSettings").disabled = false;
                     }
                 });
 

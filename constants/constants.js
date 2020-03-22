@@ -5,6 +5,8 @@ exports.ranksSorted = ["2", "3", "4","5", "6", "7", "8", "9", "10", "jack", "que
 exports.ordering = {};
 
 for(let i = 0; i<this.ranksSorted.length; i++){
+    //pre-defined order
+    //not defined for jokers, so their sorting is undefined
     this.ordering[this.ranksSorted[i]] = i+2;
 }
 
@@ -57,7 +59,7 @@ exports.cardObjToStr = function(cardObj){
     else{
         cardStr = cardObj.rank + "_of_" + cardObj.suit;
     } 
-    console.log(cardStr);
+    // console.log(cardStr);
     return cardStr;
 }
 
@@ -82,7 +84,7 @@ exports.cardStrToObj = function(cardStr){
             "suit": cardStr.substring(secondUS+1, cardStr.length)
         });
     }
-    console.log(cardObj);
+    // console.log(cardObj);
     return cardObj;
 }
 

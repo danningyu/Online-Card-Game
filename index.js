@@ -25,8 +25,12 @@ let numDecks = -1;
 let gameID = "";
 let numPlayers = -1;
 let kittySize = -1;
+let kittyCards = []; //string of cards, sorted
 let players = [];
 let sockIDtoPlayer = {};
+let currentStarter = undefined; //type: Player
+let currTrumpSuit = ""; //type: string 
+// ("clubs", "diamonds", "hearts", "spades", "notrump")
 
 // ** For dealing cards
 let currCard = 0;
@@ -76,7 +80,7 @@ class Player{
 
     addCardToHand(cardObj){
         this.m_cards[cardObj.suit].push(cardObj);
-        console.log("After insertion:");
+        // console.log("After insertion:");
         this.sortCurrCards();
         // this.printCurrCards();
     }
@@ -89,7 +93,7 @@ class Player{
             }
         }
         this.m_cards[cardObj.suit].splice(i, 1);
-        console.log("After deletion:");
+        // console.log("After deletion:");
         this.sortCurrCards();
         // this.printCurrCards();
     }
@@ -103,7 +107,7 @@ class Player{
     }
 
     sortCurrCards(){
-        console.log(Object.keys(this.m_cards));
+        // console.log(Object.keys(this.m_cards));
         // for(let i = 0; i<this.m_cards.keys().length; i++){
 
         // }
@@ -293,11 +297,60 @@ io.on('connection', function(socket){
         }
     });
 
+    socket.on('set game settings', function(starterChecked, trumpSuit){
+        if(starterChecked === "starter"){
+            currentStarter = sockIDtoPlayer[socket.id];
+            io.emit('chat message', 'Player ' + sockIDtoPlayer[socket.id].getName() + " is now the starter");
+            socket.broadcast.emit('uncheck starter');
+        }
+        if(trumpSuit !== undefined){
+            currTrumpSuit = trumpSuit;
+            io.emit('chat message', "The trump suit is now " + trumpSuit);
+            io.emit('set trump suit', trumpSuit);
+        }
+    });
+
+    socket.on('draw kitty', function(sockId){
+        console.log("Attemping on server side");
+        if(currCard >= 54*numDecks-kittySize && currCard<54*numDecks){
+            console.log("Drawing from kitty");
+            while(currCard<54*numDecks){
+                let index = currCard;
+                console.log(index);
+                selectedCardStr = constants.allCards[indices[index]%54];
+                selectedCardObj = constants.allCardsObj[indices[index]%54];
+                
+                sockIDtoPlayer[sockId].addCardToHand(selectedCardObj);
+                console.log("Dealt kitty card " + selectedCardStr + " to player " + sockId);
+                // socket.emit('serve draw card', selectedCardStr);
+                socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
+                currCard += 1;
+            }
+            socket.emit('kitty no draw yes set aside', kittySize);
+            io.emit('chat message', "Player " + sockIDtoPlayer[sockId].getName() + " has drawn the kitty");
+        }
+    });
+
+    socket.on('set aside kitty', function(setAsideCards){
+        if(setAsideCards.length !== kittySize){
+            socket.emit('chat message', "Private Msg: ERROR: Incorrect kitty size");
+        }
+        else{
+            kittyCards = setAsideCards;
+            io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " has set aside the kitty");
+            for(let i = 0; i< setAsideCards.length; i++){
+                // console.log(setAsideCards[i]);
+                sockIDtoPlayer[socket.id].removeCardFromHand(constants.cardStrToObj(setAsideCards[i]));
+                // io.emit('chat message', playCardReq[i]);
+            }
+        }
+    });
+
     socket.on('play card req', function(playCardReq){
         console.log("Got card play request from " + socket.id);
         io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " played:");
         for(let i = 0; i< playCardReq.length; i++){
-            console.log(playCardReq[i]);
+            // console.log(playCardReq[i]);
             sockIDtoPlayer[socket.id].removeCardFromHand(constants.cardStrToObj(playCardReq[i]));
             io.emit('chat message', playCardReq[i]);
         }
@@ -307,7 +360,7 @@ io.on('connection', function(socket){
         io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
         for(let i = 0; i< playCardReq.length; i++){
             sockIDtoPlayer[socket.id].addCardToHand(constants.cardStrToObj(playCardReq[i]));
-            console.log(playCardReq[i]);
+            // console.log(playCardReq[i]);
             io.emit('chat message', playCardReq[i]);
         }
     })
