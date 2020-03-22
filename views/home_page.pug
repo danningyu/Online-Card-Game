@@ -1,0 +1,31 @@
+html
+    head
+        title Welcome to Card Game
+    body
+        if createGame
+            h3 Create a game! 
+            h4 #{message}
+            form(action = "/" method = "POST")
+                div 
+                    input(name = "gameID" type = "text" autocomplete="off" required placeholder = "Unique Game ID")
+                div
+                    input(name = "numPlayers" type = "text" autocomplete="off" required placeholder = "Number of Players" pattern="^[0-9]*[02468]$")
+                div
+                    input(name = "numDecks" type = "text" required placeholder = "Number of Decks" pattern="^[0-9]*$")
+                div
+                    input(name = "kittySize" type = "text" required placeholder = "Kitty size" )
+                div
+                    button(type = "submit") Create Game!
+                //- input(name = "id" type = "text" required placeholder = "User ID")
+                //- input(name = "password" type = "password" required placeholder = "Password")
+                //- button(type = "submit") Sign Up
+        else
+            h3 Join a game
+            h4 #{message}
+            form(action="/" method="POST")
+                div 
+                    input(name = "gameID" type = "text" autocomplete="off" required placeholder = "Game ID")
+                div
+                    input(name = "playerName" type = "text" autocomplete="off" required placeholder = "Your Name, no commas allowed")
+                div
+                    button(type = "submit") Join Game!

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Tractor Card Game App</title>
+        
+        <style>
+            /* * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font: 13px Helvetica, Arial; }
+            form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+            form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+            form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+            #messages { list-style-type: none; margin: 0; padding: 0; }
+            #messages li { padding: 5px 10px; }
+            #messages li:nth-child(odd) { background: #eee; } */
+            #arrayImages img {  width: 10%; height: auto}
+          </style>
+    </head>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <!--- above code is client logic using socket.io's client feature -->
+    <body>
+        <ul id="messages"></ul>
+        <form action="" id="form1">
+            <input id="m" autocomplete="off" /><button>Send</button>
+            
+        </form>
+        <form id="form2">
+            <button id="draw" disabled>Draw Card</button>
+            <!-- <input id ="box2" autocomplete="off"/> -->
+        </form>
+        <form id="form3">
+            <button id="play" disabled>Play Card</button>
+        </form>
+        <form id="form4">
+            <button id="undo" disabled>Undo Previous Play</button>
+        </form>
+
+        <img style="display:none" id="img1" src="" class="ogimage"/>
+        <div id="arrayImages" class="hi2">
+            <!-- <img src="3_of_clubs.png" />
+            <img  src="4_of_clubs.png" />
+            <img  src="5_of_clubs.png" /> -->
+
+        </div>
+
+        <script>
+            $(function () {
+                var socket = io();
+                var playedCardHistory = []; //stack for "undos"
+                $('#form1').submit(function(e){
+                    //for chatting
+                    e.preventDefault(); // prevents page reloading
+                    socket.emit('chat message', $('#m').val());
+                    socket.emit('request card', $('#m').val());
+                    $('#m').val(''); //this clears the type box
+                    console.log("Chat submitted");
+                    return false;
+                });
+
+                $('#form2').submit(function(e){
+                    //for drawing cards
+                    e.preventDefault();
+                    socket.emit('draw card', socket.id);
+                    console.log(socket.id + " requested to draw a card");
+                    
+                });
+
+                $('#form3').submit(function(e){
+                    //for playing cards
+                    e.preventDefault();
+                    if($(".hi2 img.active").length !== 0){
+                        var cardsToPlay = [];
+                        const arrayImagesElement = document.getElementById("arrayImages");
+                        //console.log(socket.id + " played card(s): ");
+                        for(let i = 0; i< $(".hi2 img.active").length; i++){
+                            // console.log($(".hi2 img.active")[i].id);
+                            cardsToPlay.push($(".hi2 img.active")[i].id);
+                            
+                        }
+                        for(let i = 0; i<cardsToPlay.length; i++){
+                            arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
+                        }
+                        playedCardHistory.push(cardsToPlay);
+                        document.getElementById("undo").disabled = false;
+                        socket.emit('play card req', cardsToPlay);
+                    }
+
+                });
+
+                $('#form4').submit(function(e){
+                    //for undoing
+                    e.preventDefault();
+                    var lastPlayedCards = playedCardHistory.pop();
+                    const arrayImagesElement = document.getElementById("arrayImages");
+                    
+                    for(let i = 0; i<lastPlayedCards.length; i++){
+                        arrayImagesElement.appendChild(createImageNode(lastPlayedCards[i], lastPlayedCards[i]));
+                    }
+                    
+                    if(playedCardHistory.length === 0){
+                        document.getElementById("undo").disabled = true;
+                    }
+                    socket.emit('undo card play', lastPlayedCards);
+                });
+
+                socket.on('chat message', function(msg){
+                    $('#messages').append($('<div>').text(msg));
+                    if(msg.indexOf("SUCCESS") !== -1){
+                        //okay if this executes again
+                        document.getElementById("draw").disabled = false;
+                        document.getElementById("play").disabled = false;
+                    }
+                });
+
+                socket.on('serve card request', function(cardServed){
+                        console.log("You got a " + cardServed);
+                        var image = document.getElementById("img1").src = cardServed + ".png";
+                        console.log("Image source: " + document.getElementById("img1").src);
+                        document.getElementById( "img1" ).style.display = "inline"; 
+                });
+
+                function createImageNode(fileName, altText) {
+                    // console.log(fileName);
+                    const img = new Image();
+
+                    img.class = "cardsInHand";
+                    img.src = fileName+".png";
+                    img.alt = altText;
+                    img.id = fileName;
+                    img.style="border:2px solid black";
+                    return img;
+                }
+                
+                socket.on('serve draw card', function(card){
+                    const arrayImagesElement = document.getElementById("arrayImages");
+                    arrayImagesElement.appendChild(createImageNode(card, card));
+                })
+
+                socket.on('serve card array', function(cards){
+                    var images = cards;
+                    // console.log(images);
+                    const arrayImagesElement = document.getElementById("arrayImages");
+                    
+                    while (arrayImagesElement.lastElementChild) {
+                        arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
+                    }
+                    images.forEach(img =>{
+                        arrayImagesElement.appendChild(createImageNode(img, img));
+                    });
+                });
+
+                $('#arrayImages').on('click', 'img', function(){
+                    // alert($(this).attr('src'));
+                    $(this).toggleClass("active");
+                    // console.log($(this));
+                    if($(this)[0].className === 'active'){
+                        // console.log("Made active");
+                        $(this)[0].style="border:6px solid red";
+                    }
+                    else{
+                        // console.log("Unselected");
+                        $(this)[0].style="border:2px solid black";
+                    }
+                    console.log("# of cards selected: " + $(".hi2 img.active").length);
+                });
+            });
+        </script>
+    </body>
+</html>
