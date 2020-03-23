@@ -11,6 +11,11 @@ var io = require('socket.io')(http);
 
 var constants = require('./constants/constants.js');
 
+let port = process.env.PORT;
+if (port == null || port == "") {
+  port = 3000;
+}
+
 app.set('view engine', 'pug'); //don't these have to come before doing res.render(form)...?
 app.set('views', './views');
 app.use(bodyParser.json()); 
@@ -442,6 +447,6 @@ app.get('*', function(req, res){
 });
 
 
-http.listen(3000, function(){
-    console.log('Listening on port 3000');
+http.listen(port, function(){
+    console.log('Listening on port' +port);
 });
