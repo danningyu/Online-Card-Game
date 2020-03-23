@@ -12,8 +12,8 @@
             #messages { list-style-type: none; margin: 0; padding: 0; }
             #messages li { padding: 5px 10px; }
             #messages li:nth-child(odd) { background: #eee; } */
-            #arrayImages img {  width: 10%; height: auto}
-            #messages img {width: 10%; height: auto}
+            #arrayImages img {  width: 5%; height: auto}
+            #messages img {width: 5%; height: auto}
           </style>
     </head>
     <script src="/socket.io/socket.io.js"></script>
@@ -22,31 +22,45 @@
     <body>
         <ul id="messages"></ul>
         <form action="" id="form1">
-            <input id="m" autocomplete="off"/><button>Send</button>
-            
+            <input id="m" autocomplete="off"/><button>Send</button>            
         </form>
-        <form id="form2">
-            <button id="draw" disabled>Draw Card (or sort hand)</button>
-            <!-- <input id ="box2" autocomplete="off"/> -->
-        </form>
-        <form id="form3">
-            <button id="play" disabled>Play Card</button>
-        </form>
-        <form id="form4">
-            <button id="undo" disabled>Undo Previous Play</button>
-        </form>
-        <!-- <form id="gameSettings"> -->
-        <h3>Game Settings</h3>
-        <label><input type="checkbox" id="starterCheckbox" value="starter">I am the starter</label><br>
-        Trump Suit<br>
+
+        <table>
+            <tr>
+                <td>
+                    Draw Cards
+                </td>
+                <td>
+                    <button id="draw" style="width:100px" disabled>Draw Card</button>
+                </td>
+                <td>
+                    <button id="sort" style="width:100px" disabled>Sort Hand</button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Play Cards
+                </td>
+                <td>
+                    <button id="play" style="width:100px" disabled>Play Card</button>
+                </td>
+                <td>
+                    <button id="undo" style="width:100px" disabled>Undo Play</button>
+                </td>
+            </tr>
+        </table>
+
+        <h4>Game Settings</h4>
+        I am the starter&nbsp;<label><input type="checkbox" id="starterCheckbox" value="starter"></label><br>
+        Trump Suit&nbsp;&nbsp;&nbsp;
         <input type="radio" id="clubsTrump" name="trumpSuit" value="clubs">
-        <label for="clubsTrump">Clubs</label><br>
+        <label for="clubsTrump">Clubs&nbsp;&nbsp;&nbsp;</label>
         <input type="radio" id="diamondsTrump" name="trumpSuit" value="diamonds">
-        <label for="diamondsTrump">Diamonds</label><br>
+        <label for="diamondsTrump">Diamonds&nbsp;&nbsp;&nbsp;</label>
         <input type="radio" id="heartsTrump" name="trumpSuit" value="hearts">
-        <label for="heartsTrump">Hearts</label><br>
+        <label for="heartsTrump">Hearts&nbsp;&nbsp;&nbsp;</label>
         <input type="radio" id="spadesTrump" name="trumpSuit" value="spades">
-        <label for="spadesTrump">Spades</label><br>
+        <label for="spadesTrump">Spades&nbsp;&nbsp;&nbsp;</label>
         <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
         <label for="notrumpTrump">No Trump</label><br>
         Trump Rank
@@ -66,9 +80,10 @@
             <option value="ace">Ace</option>
         </select><br>
         <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
+        <h4>Starter (zhuangjia) Options</h4>
         <button id="drawKitty" type="submit" disabled>Draw Kitty Cards</button>
         <button id="setAsideKitty" type="submit" disabled>Set Aside Kitty Cards</button>
-        
+        <button id="revealKitty" type="submit" disabled>Reveal Kitty Cards</button>
 
         <img style="display:none" id="img1" src="" class="ogimage"/>
 
@@ -89,7 +104,7 @@
                     return false;
                 });
 
-                $('#form2').submit(function(e){
+                $('#draw').click(function(e){
                     //for drawing cards
                     e.preventDefault();
                     socket.emit('draw card', socket.id);
@@ -97,20 +112,28 @@
                     
                 });
 
-                $('#form3').submit(function(e){
+                $('#play').click(function(e){
                     //for playing cards
                     e.preventDefault();
                     if($(".hi2 img.active").length !== 0){
                         var cardsToPlay = [];
                         const arrayImagesElement = document.getElementById("arrayImages");
-                        //console.log(socket.id + " played card(s): ");
+                        console.log(socket.id + " played card(s): ");
                         for(let i = 0; i< $(".hi2 img.active").length; i++){
-                            // console.log($(".hi2 img.active")[i].id);
+                            console.log($(".hi2 img.active")[i].id);
                             cardsToPlay.push($(".hi2 img.active")[i].id);
                             
                         }
                         for(let i = 0; i<cardsToPlay.length; i++){
-                            arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
+                            console.log("Attempting to remove" + cardsToPlay[i]);
+                            try{
+                                arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
+                            }
+                            catch(DOMException){
+                                console.log("Remove child failed, using remove");
+                                document.getElementById(cardsToPlay[i]).remove();
+                            }
+                            
                         }
                         playedCardHistory.push(cardsToPlay);
                         document.getElementById("undo").disabled = false;
@@ -119,21 +142,26 @@
 
                 });
 
-                $('#form4').submit(function(e){
+                $('#undo').click(function(e){
                     //for undoing
                     e.preventDefault();
                     var lastPlayedCards = playedCardHistory.pop();
-                    const arrayImagesElement = document.getElementById("arrayImages");
+                    // const arrayImagesElement = document.getElementById("arrayImages");
                     
-                    for(let i = 0; i<lastPlayedCards.length; i++){
-                        arrayImagesElement.appendChild(createImageNode(lastPlayedCards[i], lastPlayedCards[i]));
-                    }
+                    // for(let i = 0; i<lastPlayedCards.length; i++){
+                    //     arrayImagesElement.appendChild(createImageNode(lastPlayedCards[i], lastPlayedCards[i], "hand"));
+                    // }
                     
                     if(playedCardHistory.length === 0){
                         document.getElementById("undo").disabled = true;
                     }
                     socket.emit('undo card play', lastPlayedCards);
                 });
+
+                $('#sort').click(function(e){
+                    e.preventDefault();
+                    socket.emit('sort hand');
+                })
 
                 $('#updateSettings').click(function(e){
                     e.preventDefault();
@@ -177,6 +205,11 @@
                     }
                 });
 
+                $('#revealKitty').click(function(e){
+                    e.preventDefault();
+                    socket.emit('reveal kitty');
+                });
+
                 socket.on('kitty no draw yes set aside', function(kittySize){
                     document.getElementById("drawKitty").disabled = true;
                     document.getElementById("setAsideKitty").disabled = false;
@@ -189,8 +222,10 @@
                 });
 
                 socket.on('set trump suit', function(trumpSuit){
-                    var radioButton = document.getElementById(trumpSuit+"Trump");
-                    radioButton.click();
+                    if(trumpSuit !== "" && trumpSuit !== undefined){
+                        var radioButton = document.getElementById(trumpSuit+"Trump");
+                        radioButton.click();
+                    }                 
                 });
 
                 socket.on('set trump rank', function(inputTrumpRank){
@@ -204,12 +239,13 @@
                         document.getElementById("draw").disabled = false;
                         document.getElementById("play").disabled = false;
                         document.getElementById("updateSettings").disabled = false;
+                        document.getElementById("sort").disabled = false;
                     }
                 });
 
                 socket.on('chat message card', function(card){
 
-                    $('#messages').append(createImageNode(card, card));
+                    $('#messages').append(createImageNode(card, card, "chat"));
                 });
 
                 socket.on('serve card request', function(cardServed){
@@ -219,21 +255,29 @@
                         document.getElementById( "img1" ).style.display = "inline"; 
                 });
 
-                function createImageNode(fileName, altText) {
+                function createImageNode(fileName, altText, location) {
                     // console.log(fileName);
                     const img = new Image();
 
                     img.class = "cardsInHand";
                     img.src = fileName+".png";
                     img.alt = altText;
-                    img.id = fileName;
+                    if(location === "hand"){
+                        img.id = fileName;
+                    }
+                    else{
+                        img.id = fileName+"played"
+                    }
+
+                    
+                    
                     img.style="border:2px solid black";
                     return img;
                 }
                 
                 socket.on('serve draw card', function(card){
                     const arrayImagesElement = document.getElementById("arrayImages");
-                    arrayImagesElement.appendChild(createImageNode(card, card));
+                    arrayImagesElement.appendChild(createImageNode(card, card, "hand"));
                 })
 
                 socket.on('serve card array', function(cards){
@@ -245,7 +289,7 @@
                         arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
                     }
                     images.forEach(img =>{
-                        arrayImagesElement.appendChild(createImageNode(img, img));
+                        arrayImagesElement.appendChild(createImageNode(img, img, "hand"));
                     });
                 });
 

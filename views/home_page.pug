@@ -24,8 +24,19 @@ html
             h4 #{message}
             form(action="/" method="POST")
                 div 
-                    input(name = "gameID" type = "text" autocomplete="off" required placeholder = "Game ID")
+                    input(name = "gameID" type = "text" autocomplete="off" style="width:225px" required placeholder = "Game ID")
                 div
-                    input(name = "playerName" type = "text" autocomplete="off" required placeholder = "Your Name, no commas allowed")
+                    input(name = "playerName" type = "text" autocomplete="off" style="width:225px" required placeholder = "Your Name, no commas allowed")
+                div Team 1:
+                    each val in playerIndicesVal
+                        if val%2==0
+                            input(type='radio' id=(val+1)+'checkBox' value=val+1 name="playerNumber")
+                            label Player #{val+1} &nbsp;&nbsp;&nbsp;
+                        
+                div Team 2:
+                    each val in playerIndicesVal
+                        if val%2==1
+                            input(type='radio' id=(val+1)+'checkBox' value=val+1 name="playerNumber")
+                            label Player #{val+1} &nbsp;&nbsp;&nbsp;
                 div
                     button(type = "submit") Join Game!

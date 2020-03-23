@@ -9,6 +9,9 @@ Clone this repository.
 `$ npm install`  
 `$ npm run server`
 
+To update Heroku app:  
+`$ git push heroku master`
+
 To start on heroku:  
 `$ heroku ps:scale web=1`
 

@@ -36,7 +36,8 @@ let sockIDtoPlayer = {};
 let currentStarter = undefined; //type: Player
 let currTrumpSuit = ""; //type: string 
 // ("clubs", "diamonds", "hearts", "spades", "notrump")
-let currTrumpRank = "3";
+let currTrumpRank = "";
+let playerIndices = [];
 
 // ** For dealing cards
 let currCard = 0;
@@ -45,28 +46,25 @@ let indices = undefined;
 // console.log(constants.allCardsObj);
 
 class Player{
-    constructor(name){
+    constructor(name, playerNum){
         this.m_name = name;
         this.m_socketID = "";
         this.m_team = -1;
-        this.m_gameID = "";
-        this.m_validated = false;
+        this.m_playerNum = playerNum;
+        // this.m_gameID = ""; //not used at the moment
+        // this.m_validated = false; //not used at the moment
         this.m_cards = {
             "clubs": [], //array stores card objects
             "diamonds": [],
             "hearts": [],
             "spades": [],
-            "trumps": []
+            "trumps": [] //jokers + trump suit + trump rank cards
         };
     }
 
-    setSocketID(socketID){
-        this.m_socketID = socketID;
-    }
+    setSocketID(socketID){ this.m_socketID = socketID; }
 
-    getSocketID(){
-        return this.m_socketID;
-    }
+    getSocketID(){ return this.m_socketID; }
 
     setTeam(teamNum){   
         if(teamNum !== 1 && teamNum !== 2){
@@ -76,13 +74,9 @@ class Player{
         return true;
     }
 
-    getTeam(){
-        return this.m_team;
-    }
+    getTeam(){ return this.m_team; }
 
-    getName(){
-        return this.m_name;
-    }
+    getName(){ return this.m_name; }
 
     addCardToHand(cardObj){
         this.m_cards[cardObj.suit].push(cardObj);
@@ -136,7 +130,8 @@ class Player{
             this.m_cards["trumps"] = []; //clear out all trump cards
             
             var adjustedTrumps = [];
-            if(currTrumpSuit !== "notrump"){
+            if(currTrumpSuit !== "notrump" && currTrumpSuit !== null){
+                console.log(currTrumpSuit);
                 for(let i = 0; i<this.m_cards[currTrumpSuit].length; i++){
                     if(this.m_cards[currTrumpSuit][i].rank !== currTrumpRank){
                         //this if to avoid double counting card that is 
@@ -146,23 +141,24 @@ class Player{
                     
                 }
             }
-            var trumpRankAndSuit = [];
-            Object.keys(this.m_cards).forEach(suit => {
-                this.m_cards[suit].forEach(card => {
-                    if(card.rank === currTrumpRank){
-                        if(card.suit === currTrumpSuit){
-                            trumpRankAndSuit.push(card);
+            if(currTrumpRank !== ""){
+                var trumpRankAndSuit = [];
+                Object.keys(this.m_cards).forEach(suit => {
+                    this.m_cards[suit].forEach(card => {
+                        if(card.rank === currTrumpRank){
+                            if(card.suit === currTrumpSuit){
+                                trumpRankAndSuit.push(card);
+                            }
+                            else{
+                                adjustedTrumps.push(card);
+                            }
                         }
-                        else{
-                            adjustedTrumps.push(card);
-                        }
-                    }
+                    });
                 });
-            });
-    
-            trumpRankAndSuit.forEach(card =>{
-                adjustedTrumps.push(card);
-            })
+                trumpRankAndSuit.forEach(card =>{
+                    adjustedTrumps.push(card);
+                });
+            }         
     
             jokers.forEach(card =>{
                 adjustedTrumps.push(card);
@@ -170,8 +166,7 @@ class Player{
     
             this.m_cards["trumps"] = adjustedTrumps;
             // console.log(this.m_cards["trumps"]);
-        }
-        
+        }      
     }
 
     flattenCardArrayRetString(){
@@ -205,7 +200,11 @@ app.get('/', function(req, res){
         res.render('home_page', {createGame: true});
     }
     else{
-        res.render('home_page', {createGame: false});
+        res.render('home_page', {
+            createGame: false,
+            playerIndicesVal: playerIndices,
+
+        });
     }
 });
 
@@ -230,6 +229,7 @@ app.post('/', function(req, res){
             gameID = req.body.gameID; //unique game identifier
             numPlayers = parseInt(req.body.numPlayers);
             kittySize = parseInt(req.body.kittySize);
+            playerIndices = [...Array(numPlayers).keys()]
             
             indices = [...Array(54*req.body.numDecks).keys()];
             constants.shuffleArray(indices);
@@ -242,24 +242,33 @@ app.post('/', function(req, res){
         if(req.body.gameID !== gameID){
             res.render('home_page', {message: "Invalid game ID", createGame: false});
         }
+        else if(req.body.playerName.match(/,/)){
+            res.render('home_page', {message: "No commas allowed in name", createGame: false});
+        }
         else{
             //to do: no duplicate players allowed
-            players.push(new Player(req.body.playerName));
+            var newPlayer = new Player(req.body.playerName, parseInt(req.body.playerNumber));
+            players.push(newPlayer);
+            if(parseInt(req.body.playerNumber)%2 == 1){
+                newPlayer.setTeam(1);
+            }
+            else{
+                newPlayer.setTeam(2);
+            }
             res.redirect('/play/'+gameID+req.body.playerName);
         }
     }
 });
 
-function assocSockIDwithName(playerName, playerTeam, socketID){
+function assocSockIDwithName(playerName, socketID){
     for(let i = 0; i<players.length; i++){
         var player = players[i];
-        if(player.getTeam() === -1 && playerName === player.getName()){
+        if(playerName === player.getName()){
             player.setSocketID(socketID);
-            player.setTeam(parseInt(playerTeam))
             sockIDtoPlayer[socketID] = player;
             console.log(sockIDtoPlayer);
             console.log(player);
-            console.log("Name " + playerName +" and team " + playerTeam + " set for " + socketID);
+            console.log("Name " + playerName + " set for " + socketID);
             return true;
         }
     }
@@ -302,12 +311,7 @@ io.on('connection', function(socket){
         if(!isSocketAssociated(socket.id)){
             //if we have not connected socket to a player...
             console.log("Trying to associating socket with player...");
-            let commaLoc = msg.indexOf(",");
-            if(!assocSockIDwithName(
-                                    msg.substr(0, commaLoc), 
-                                    msg.substr(commaLoc+1, msg.length),
-                                    socket.id)
-                                    )
+            if(!assocSockIDwithName(msg, socket.id))
             {
                     socket.emit('chat message', "Private Msg: ERROR: invalid name or team, try again");
             }
@@ -317,6 +321,18 @@ io.on('connection', function(socket){
         }
         else{
             io.emit('chat message', msg); //broadcast to everyone
+        }
+    });
+    
+    socket.on('sort hand', function(){
+        sockIDtoPlayer[socket.id].sortCurrCards()
+        socket.emit('serve card array', sockIDtoPlayer[socket.id].flattenCardArrayRetString());
+    });
+
+    socket.on('reveal kitty', function(){
+        io.emit('chat message', "Revealing kitty cards: ");
+        for(let i = 0; i< kittyCards.length; i++){
+            io.emit('chat message card', kittyCards[i]);
         }
     });
 
@@ -430,24 +446,24 @@ io.on('connection', function(socket){
         }
     });
     socket.on('undo card play', function(playCardReq){
-        console.log("Got card play request from " + socket.id);
+        console.log("Got card undo request from " + socket.id);
         io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
         for(let i = 0; i< playCardReq.length; i++){
             sockIDtoPlayer[socket.id].addCardToHand(constants.cardStrToObj(playCardReq[i]));
-            // console.log(playCardReq[i]);
+            socket.emit('serve card array', sockIDtoPlayer[socket.id].flattenCardArrayRetString());
             io.emit('chat message', playCardReq[i]);
         }
     })
     //emit only to that socket
-    socket.emit('chat message', 'Welcome, enter your name and team in the format <name>,<team (1 or 2)>');
+    socket.emit('chat message', 'Welcome, please enter your name again.');
 });
 
 app.get('*', function(req, res){
     //res = response
-    res.send("Invalid URL: page not found.");
+    res.redirect('/');
 });
 
 
 http.listen(port, function(){
-    console.log('Listening on port' +port);
+    console.log('Listening on port ' +port);
 });
