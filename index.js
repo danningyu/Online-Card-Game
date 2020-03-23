@@ -425,7 +425,8 @@ io.on('connection', function(socket){
         for(let i = 0; i< playCardReq.length; i++){
             // console.log(playCardReq[i]);
             sockIDtoPlayer[socket.id].removeCardFromHand(constants.cardStrToObj(playCardReq[i]));
-            io.emit('chat message', playCardReq[i]);
+            // io.emit('chat message', playCardReq[i]);
+            io.emit('chat message card', playCardReq[i]);
         }
     });
     socket.on('undo card play', function(playCardReq){

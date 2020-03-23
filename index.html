@@ -13,6 +13,7 @@
             #messages li { padding: 5px 10px; }
             #messages li:nth-child(odd) { background: #eee; } */
             #arrayImages img {  width: 10%; height: auto}
+            #messages img {width: 10%; height: auto}
           </style>
     </head>
     <script src="/socket.io/socket.io.js"></script>
@@ -185,9 +186,6 @@
                 socket.on('uncheck starter', function(){
                     $("#starterCheckbox").prop("checked", false);
                     document.getElementById("drawKitty").disabled = true;
-                    // $("#starterCheckbox").click();
-                    // for jquery verions <1.6
-                    // $("#starterCheckbox").attr("checked", false);
                 });
 
                 socket.on('set trump suit', function(trumpSuit){
@@ -207,6 +205,11 @@
                         document.getElementById("play").disabled = false;
                         document.getElementById("updateSettings").disabled = false;
                     }
+                });
+
+                socket.on('chat message card', function(card){
+
+                    $('#messages').append(createImageNode(card, card));
                 });
 
                 socket.on('serve card request', function(cardServed){
