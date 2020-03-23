@@ -196,14 +196,14 @@ app.get('/image1', function(req, res){
 })
 
 app.get('/', function(req, res){
+    console.log(req.body);
     if(gameID === undefined || gameID === ""){
         res.render('home_page', {createGame: true});
     }
     else{
         res.render('home_page', {
             createGame: false,
-            playerIndicesVal: playerIndices,
-
+            playerIndicesVal: playerIndices
         });
     }
 });
@@ -240,15 +240,30 @@ app.post('/', function(req, res){
     }
     else{
         if(req.body.gameID !== gameID){
-            res.render('home_page', {message: "Invalid game ID", createGame: false});
+            res.render('home_page', {
+                message: "Invalid game ID",
+                createGame: false,
+                playerIndicesVal: playerIndices
+            });
         }
         else if(req.body.playerName.match(/,/)){
-            res.render('home_page', {message: "No commas allowed in name", createGame: false});
+            res.render('home_page', {
+                message: "No commas allowed in name", 
+                createGame: false, 
+                playerIndicesVal: playerIndices
+            });
         }
         else{
             //to do: no duplicate players allowed
             var newPlayer = new Player(req.body.playerName, parseInt(req.body.playerNumber));
             players.push(newPlayer);
+            if(req.body.playerNumber === undefined){
+                res.render('home_page', {
+                    message: "Error: Must specify a team and player number",
+                    createGame: false,
+                    playerIndicesVal: playerIndices
+                });
+            }
             if(parseInt(req.body.playerNumber)%2 == 1){
                 newPlayer.setTeam(1);
             }
@@ -316,10 +331,16 @@ io.on('connection', function(socket){
                     socket.emit('chat message', "Private Msg: ERROR: invalid name or team, try again");
             }
             else{
-                socket.emit('chat message', "Private Msg: SUCCESS: name and team set");
+                socket.emit('chat message', "Private Msg: SUCCESS: Name set, waiting for other players to join");
+                if(players.length === numPlayers){
+                    io.emit('chat message', "Status: All players have joined!");
+                    
+                    io.to(`${players[0].getSocketID}`).emit('enable buttons'); //by default, first player is enabled
+                }
             }
         }
         else{
+            socket.broadcast.emit('chat message', 'Who see this??');
             io.emit('chat message', msg); //broadcast to everyone
         }
     });

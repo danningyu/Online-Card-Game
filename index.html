@@ -201,12 +201,14 @@
                         }
                         playedCardHistory.push(cardsToPlay);
                         document.getElementById("undo").disabled = false;
+                        document.getElementById("revealKitty").disabled = false;
                         socket.emit('set aside kitty', cardsToPlay);
                     }
                 });
 
                 $('#revealKitty').click(function(e){
                     e.preventDefault();
+                    document.getElementById("revealKitty").disabled = true;
                     socket.emit('reveal kitty');
                 });
 
@@ -236,15 +238,20 @@
                     $('#messages').append($('<div>').text(msg));
                     if(msg.indexOf("SUCCESS") !== -1){
                         //okay if this executes again
-                        document.getElementById("draw").disabled = false;
-                        document.getElementById("play").disabled = false;
+
                         document.getElementById("updateSettings").disabled = false;
                         document.getElementById("sort").disabled = false;
+                        document.getElementById("draw").disabled = false;
+                        document.getElementById("play").disabled = false;
                     }
                 });
 
-                socket.on('chat message card', function(card){
+                socket.on('enable buttons', function(){
+                    document.getElementById("draw").disabled = false;
+                    document.getElementById("play").disabled = false;
+                });
 
+                socket.on('chat message card', function(card){
                     $('#messages').append(createImageNode(card, card, "chat"));
                 });
 
