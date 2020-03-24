@@ -1,320 +1,419 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Tractor Card Game App</title>
-        
         <style>
-            /* * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font: 13px Helvetica, Arial; }
-            form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
-            form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
-            form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
-            #messages { list-style-type: none; margin: 0; padding: 0; }
-            #messages li { padding: 5px 10px; }
-            #messages li:nth-child(odd) { background: #eee; } */
+            .sidenav {
+            height: 100%; /* Full-height: remove this if you want "auto" height */
+            width: 200px; /* Set the width of the sidebar */
+            position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+            z-index: 1; 
+            top: 0; 
+            left: 0;
+            /* background-color: #111; */
+            overflow-x: hidden; /* Disable horizontal scroll */
+            /* padding-top: 20px; */
+            padding-left: 20px;
+            }
+
+            /* The navigation menu links
+            .sidenav a {
+            padding: 6px 8px 6px 16px;
+            text-decoration: none;
+            font-size: 20px;
+            color: #7680db;
+            display: block;
+            }
+
+            When you mouse over the navigation links, change their color
+            .sidenav a:hover {
+            color: #d8da66;
+            } */
+
+            /* Style page content */
+            .main {
+            margin-left: 220px; /* Same as the width of the sidebar */
+            padding: 0px 10px;
+            }
+
+            /* On smaller screens, where height is less than 450px, change the 
+               style of the sidebar (less padding and a smaller font size) */
+            @media screen and (max-height: 450px) {
+            .sidenav {padding-top: 15px;}
+            .sidenav a {font-size: 18px;}
+            }
+
+            .green {
+                color: green;
+            }
+
+            .black {
+                color: black;
+            }
+
             #arrayImages img {  width: 5%; height: auto}
             #messages img {width: 5%; height: auto}
-          </style>
+        </style>
+        <title>Tractor Card Game App</title>
     </head>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <!--- above code is client logic using socket.io's client feature -->
     <body>
-        <ul id="messages"></ul>
-        <form action="" id="form1">
-            <input id="m" autocomplete="off"/><button>Send</button>            
-        </form>
+       
+        <!-- Side navigation -->
+        
+        <div class="sidenav" id="sidebarhtml">
+            <h4>Current Players</h4>
+        </div>
+        
+        <!-- Page content -->
+        <div class="main">
+            <h4>Game Settings</h4>
+            I am the starter (lets you draw first)&nbsp;<label><input type="checkbox" id="starterCheckbox" value="starter"></label>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Trump Rank
+            <select id="trumpRank" name="trumpRank2">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="jack">Jack</option>
+                <option value="queen">Queen</option>
+                <option value="king">King</option>
+                <option value="ace">Ace</option>
+            </select><br>
+            Trump Suit&nbsp;&nbsp;&nbsp;
+            <input type="radio" id="clubsTrump" name="trumpSuit" value="clubs">
+            <label for="clubsTrump">Clubs&nbsp;&nbsp;&nbsp;</label>
+            <input type="radio" id="diamondsTrump" name="trumpSuit" value="diamonds">
+            <label for="diamondsTrump">Diamonds&nbsp;&nbsp;&nbsp;</label>
+            <input type="radio" id="heartsTrump" name="trumpSuit" value="hearts">
+            <label for="heartsTrump">Hearts&nbsp;&nbsp;&nbsp;</label>
+            <input type="radio" id="spadesTrump" name="trumpSuit" value="spades">
+            <label for="spadesTrump">Spades&nbsp;&nbsp;&nbsp;</label>
+            <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
+            <label for="notrumpTrump">No Trump</label><br>
+            
+            
+            <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
+            <h4 style="display:none">Starter (zhuangjia) Options</h4>
+            <button id="drawKitty" type="submit" disabled style="display:none">Draw Kitty Cards</button>
+            <button id="setAsideKitty" type="submit" disabled style="display:none">Set Aside Kitty Cards</button>
+            <button id="revealKitty" type="submit" disabled style="display:none">Reveal Kitty Cards</button>
 
-        <table>
-            <tr>
-                <td>
-                    Draw Cards
-                </td>
-                <td>
-                    <button id="draw" style="width:100px" disabled>Draw Card</button>
-                </td>
-                <td>
-                    <button id="sort" style="width:100px" disabled>Sort Hand</button>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    Play Cards
-                </td>
-                <td>
-                    <button id="play" style="width:100px" disabled>Play Card</button>
-                </td>
-                <td>
-                    <button id="undo" style="width:100px" disabled>Undo Play</button>
-                </td>
-            </tr>
-        </table>
+            <img style="display:none" id="img1" src="" class="ogimage"/>
 
-        <h4>Game Settings</h4>
-        I am the starter&nbsp;<label><input type="checkbox" id="starterCheckbox" value="starter"></label><br>
-        Trump Suit&nbsp;&nbsp;&nbsp;
-        <input type="radio" id="clubsTrump" name="trumpSuit" value="clubs">
-        <label for="clubsTrump">Clubs&nbsp;&nbsp;&nbsp;</label>
-        <input type="radio" id="diamondsTrump" name="trumpSuit" value="diamonds">
-        <label for="diamondsTrump">Diamonds&nbsp;&nbsp;&nbsp;</label>
-        <input type="radio" id="heartsTrump" name="trumpSuit" value="hearts">
-        <label for="heartsTrump">Hearts&nbsp;&nbsp;&nbsp;</label>
-        <input type="radio" id="spadesTrump" name="trumpSuit" value="spades">
-        <label for="spadesTrump">Spades&nbsp;&nbsp;&nbsp;</label>
-        <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
-        <label for="notrumpTrump">No Trump</label><br>
-        Trump Rank
-        <select id="trumpRank" name="trumpRank2">
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-            <option value="jack">Jack</option>
-            <option value="queen">Queen</option>
-            <option value="king">King</option>
-            <option value="ace">Ace</option>
-        </select><br>
-        <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
-        <h4>Starter (zhuangjia) Options</h4>
-        <button id="drawKitty" type="submit" disabled>Draw Kitty Cards</button>
-        <button id="setAsideKitty" type="submit" disabled>Set Aside Kitty Cards</button>
-        <button id="revealKitty" type="submit" disabled>Reveal Kitty Cards</button>
+            <div id="arrayImages" class="hi2"></div>
+            
+            <br><table>
+                <tr>
+                    <td>
+                        Draw Cards
+                    </td>
+                    <td>
+                        <button id="draw" style="width:100px" disabled>Draw Card</button>
+                    </td>
+                    <td>
+                        <button id="sort" style="width:100px" disabled>Sort Hand</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        Play Cards
+                    </td>
+                    <td>
+                        <button id="play" style="width:100px" disabled>Play Card</button>
+                    </td>
+                    <td>
+                        <button id="undo" style="width:100px" disabled>Undo Play</button>
+                    </td>
+                </tr>
+            </table>
 
-        <img style="display:none" id="img1" src="" class="ogimage"/>
+            <form action="" id="form1">
+                <input id="m" autocomplete="off" style="width:237px"/><button>Send</button>            
+            </form>
+            <ul id="messages"></ul>
 
-        <div id="arrayImages" class="hi2"></div>
+            <script>
+                $(function () {
+                    var socket = io();
+                    var playedCardHistory = []; //stack for "undos"
+                    var kittySizeClient = -1; //kitty size, transmitted by server
+                    var thisPlayerNum = -1; //what player number this client is
+                    // trasmitted by server
+                    $('#form1').submit(function(e){
+                        //for chatting
+                        e.preventDefault(); // prevents page reloading
+                        socket.emit('chat message', $('#m').val());
+                        socket.emit('request card', $('#m').val());
+                        $('#m').val(''); //this clears the type box
+                        console.log("Chat submitted");
+                        return false;
+                    });
 
-        <script>
-            $(function () {
-                var socket = io();
-                var playedCardHistory = []; //stack for "undos"
-                var kittySizeClient = -1; //kitty size, transmitted by server
-                $('#form1').submit(function(e){
-                    //for chatting
-                    e.preventDefault(); // prevents page reloading
-                    socket.emit('chat message', $('#m').val());
-                    socket.emit('request card', $('#m').val());
-                    $('#m').val(''); //this clears the type box
-                    console.log("Chat submitted");
-                    return false;
-                });
+                    $('#draw').click(function(e){
+                        //for drawing cards
+                        e.preventDefault();
+                        document.getElementById("draw").disabled = true;
+                        let thisPlayerSidebarId = "player"+thisPlayerNum;
+                        console.log(thisPlayerSidebarId);
+                        document.getElementById(thisPlayerSidebarId).style="color:red"
+                        socket.emit('draw card', socket.id);
+                        console.log(socket.id + " requested to draw a card");
+                        
+                    });
 
-                $('#draw').click(function(e){
-                    //for drawing cards
-                    e.preventDefault();
-                    socket.emit('draw card', socket.id);
-                    console.log(socket.id + " requested to draw a card");
-                    
-                });
-
-                $('#play').click(function(e){
-                    //for playing cards
-                    e.preventDefault();
-                    if($(".hi2 img.active").length !== 0){
-                        var cardsToPlay = [];
-                        const arrayImagesElement = document.getElementById("arrayImages");
-                        console.log(socket.id + " played card(s): ");
-                        for(let i = 0; i< $(".hi2 img.active").length; i++){
-                            console.log($(".hi2 img.active")[i].id);
-                            cardsToPlay.push($(".hi2 img.active")[i].id);
-                            
+                    $('#play').click(function(e){
+                        //for playing cards
+                        e.preventDefault();
+                        if($(".hi2 img.active").length !== 0){
+                            var cardsToPlay = [];
+                            const arrayImagesElement = document.getElementById("arrayImages");
+                            console.log(socket.id + " played card(s): ");
+                            for(let i = 0; i< $(".hi2 img.active").length; i++){
+                                console.log($(".hi2 img.active")[i].id);
+                                cardsToPlay.push($(".hi2 img.active")[i].id);
+                                
+                            }
+                            for(let i = 0; i<cardsToPlay.length; i++){
+                                console.log("Attempting to remove" + cardsToPlay[i]);
+                                try{
+                                    arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
+                                }
+                                catch(DOMException){
+                                    console.log("Remove child failed, using remove");
+                                    document.getElementById(cardsToPlay[i]).remove();
+                                }
+                                
+                            }
+                            playedCardHistory.push(cardsToPlay);
+                            document.getElementById("undo").disabled = false;
+                            socket.emit('play card req', cardsToPlay);
                         }
-                        for(let i = 0; i<cardsToPlay.length; i++){
-                            console.log("Attempting to remove" + cardsToPlay[i]);
-                            try{
+
+                    });
+
+                    $('#undo').click(function(e){
+                        //for undoing
+                        e.preventDefault();
+                        var lastPlayedCards = playedCardHistory.pop();
+                        
+                        if(playedCardHistory.length === 0){
+                            document.getElementById("undo").disabled = true;
+                        }
+                        socket.emit('undo card play', lastPlayedCards);
+                    });
+
+                    $('#sort').click(function(e){
+                        e.preventDefault();
+                        socket.emit('sort hand');
+                    })
+
+                    $('#updateSettings').click(function(e){
+                        e.preventDefault();
+                        var isChecked = $('#starterCheckbox:checked').val();
+                        var trumpSuit = $("input:radio[name='trumpSuit']:checked").val();
+                        var selTrumpRank = $('#trumpRank').val();
+                        console.log(selTrumpRank);
+                        // console.log($('#starterCheckbox:checked').val());
+                        // console.log($("input:radio[name='trumpSuit']:checked").val());
+                        // console.log("Submitted form");
+                        if(isChecked === "starter"){
+                            document.getElementById("drawKitty").disabled = false;
+                            document.getElementById("draw").disabled = false;
+                        }
+
+                        socket.emit('set game settings', isChecked, trumpSuit, selTrumpRank);
+                    });
+
+                    $('#drawKitty').click(function(e){
+                        console.log("Attempting to draw kitty");
+                        e.preventDefault();
+                        socket.emit('draw kitty', socket.id);
+                    });
+
+                    $('#setAsideKitty').click(function(e){
+                        e.preventDefault();
+                        if($(".hi2 img.active").length !== 0 && $(".hi2 img.active").length === kittySizeClient){
+                            var cardsToPlay = [];
+                            const arrayImagesElement = document.getElementById("arrayImages");
+                            //console.log(socket.id + " played card(s): ");
+                            for(let i = 0; i< $(".hi2 img.active").length; i++){
+                                // console.log($(".hi2 img.active")[i].id);
+                                cardsToPlay.push($(".hi2 img.active")[i].id);
+                                
+                            }
+                            for(let i = 0; i<cardsToPlay.length; i++){
                                 arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
                             }
-                            catch(DOMException){
-                                console.log("Remove child failed, using remove");
-                                document.getElementById(cardsToPlay[i]).remove();
+                            playedCardHistory.push(cardsToPlay);
+                            document.getElementById("undo").disabled = false;
+                            document.getElementById("revealKitty").disabled = false;
+                            socket.emit('set aside kitty', cardsToPlay);
+                        }
+                    });
+
+                    $('#revealKitty').click(function(e){
+                        e.preventDefault();
+                        document.getElementById("revealKitty").disabled = true;
+                        socket.emit('reveal kitty');
+                    });
+
+                    
+
+                    socket.on('add sidebar player', function(players){
+                        console.log(players);
+                        var sidebar = document.getElementById('sidebarhtml');
+                        
+                        
+                        while (sidebar.lastElementChild) {
+                            sidebar.removeChild(sidebar.lastElementChild);
+                        }
+                        var sidebarHeader = document.createElement('h4');
+                        var sidebarTitle = document.createTextNode('Current Players');
+                        
+                        sidebarHeader.appendChild(sidebarTitle);
+                        sidebar.appendChild(sidebarHeader);
+                        for(let i = 0; i<players.length; i++){
+                            if(players[i] !== null){
+                                let playerNum = players[i].number;
+                                var divElem = document.createElement('div');
+                                divElem.id = "player"+playerNum;
+                                // divElem.class = "green";
+                                divElem.style = "color:red";
+                                if(playerNum%2 === 1){
+                                    var content = document.createTextNode("Player " + playerNum + ": " + players[i].name + " (Team 1)");
+                                }
+                                else{
+                                    var content = document.createTextNode("Player " + playerNum + ": " + players[i].name + " (Team 2)");
+                                }                                
+                                divElem.appendChild(content);
+                                sidebar.appendChild(divElem);
+                                // $('#sidebarhtml').append($('<div>').text(content));
+                                // $('#sidebarhtml').append($('<br>'));
                             }
+                        }
+                    })
+
+                    socket.on('kitty no draw yes set aside', function(kittySize){
+                        document.getElementById("drawKitty").disabled = true;
+                        document.getElementById("setAsideKitty").disabled = false;
+                        kittySizeClient = kittySize;
+                    });
+
+                    socket.on('uncheck starter', function(){
+                        $("#starterCheckbox").prop("checked", false);
+                        document.getElementById("drawKitty").disabled = true;
+                        document.getElementById("draw").disabled = true;
+                    });
+
+                    socket.on('set trump suit', function(trumpSuit){
+                        if(trumpSuit !== "" && trumpSuit !== undefined && trumpSuit !== null){
+                            var radioButton = document.getElementById(trumpSuit+"Trump");
+                            radioButton.click();
+                        }                 
+                    });
+
+                    socket.on('set trump rank', function(inputTrumpRank){
+                        $('#trumpRank').val(inputTrumpRank);
+                    });
+
+                    socket.on('chat message', function(msg){
+                        $('#messages').prepend($('<div>').text(msg));
+                        if(msg.indexOf("SUCCESS") !== -1){
+                            //okay if this executes again
+
                             
+
+                            document.getElementById("sort").disabled = false; //you can sort anytime
+                            document.getElementById("play").disabled = false; //you can play anytime
                         }
-                        playedCardHistory.push(cardsToPlay);
-                        document.getElementById("undo").disabled = false;
-                        socket.emit('play card req', cardsToPlay);
-                    }
+                    });
 
-                });
-
-                $('#undo').click(function(e){
-                    //for undoing
-                    e.preventDefault();
-                    var lastPlayedCards = playedCardHistory.pop();
-                    // const arrayImagesElement = document.getElementById("arrayImages");
-                    
-                    // for(let i = 0; i<lastPlayedCards.length; i++){
-                    //     arrayImagesElement.appendChild(createImageNode(lastPlayedCards[i], lastPlayedCards[i], "hand"));
-                    // }
-                    
-                    if(playedCardHistory.length === 0){
-                        document.getElementById("undo").disabled = true;
-                    }
-                    socket.emit('undo card play', lastPlayedCards);
-                });
-
-                $('#sort').click(function(e){
-                    e.preventDefault();
-                    socket.emit('sort hand');
-                })
-
-                $('#updateSettings').click(function(e){
-                    e.preventDefault();
-                    var isChecked = $('#starterCheckbox:checked').val();
-                    var trumpSuit = $("input:radio[name='trumpSuit']:checked").val();
-                    var selTrumpRank = $('#trumpRank').val();
-                    console.log(selTrumpRank);
-                    // console.log($('#starterCheckbox:checked').val());
-                    // console.log($("input:radio[name='trumpSuit']:checked").val());
-                    // console.log("Submitted form");
-                    if(isChecked === "starter"){
-                        document.getElementById("drawKitty").disabled = false;
-                    }
-
-                    socket.emit('set game settings', isChecked, trumpSuit, selTrumpRank);
-                });
-
-                $('#drawKitty').click(function(e){
-                    console.log("Attempting to draw kitty");
-                    e.preventDefault();
-                    socket.emit('draw kitty', socket.id);
-                });
-
-                $('#setAsideKitty').click(function(e){
-                    e.preventDefault();
-                    if($(".hi2 img.active").length !== 0 && $(".hi2 img.active").length === kittySizeClient){
-                        var cardsToPlay = [];
-                        const arrayImagesElement = document.getElementById("arrayImages");
-                        //console.log(socket.id + " played card(s): ");
-                        for(let i = 0; i< $(".hi2 img.active").length; i++){
-                            // console.log($(".hi2 img.active")[i].id);
-                            cardsToPlay.push($(".hi2 img.active")[i].id);
-                            
-                        }
-                        for(let i = 0; i<cardsToPlay.length; i++){
-                            arrayImagesElement.removeChild(document.getElementById(cardsToPlay[i]));
-                        }
-                        playedCardHistory.push(cardsToPlay);
-                        document.getElementById("undo").disabled = false;
-                        document.getElementById("revealKitty").disabled = false;
-                        socket.emit('set aside kitty', cardsToPlay);
-                    }
-                });
-
-                $('#revealKitty').click(function(e){
-                    e.preventDefault();
-                    document.getElementById("revealKitty").disabled = true;
-                    socket.emit('reveal kitty');
-                });
-
-                socket.on('kitty no draw yes set aside', function(kittySize){
-                    document.getElementById("drawKitty").disabled = true;
-                    document.getElementById("setAsideKitty").disabled = false;
-                    kittySizeClient = kittySize;
-                });
-
-                socket.on('uncheck starter', function(){
-                    $("#starterCheckbox").prop("checked", false);
-                    document.getElementById("drawKitty").disabled = true;
-                });
-
-                socket.on('set trump suit', function(trumpSuit){
-                    if(trumpSuit !== "" && trumpSuit !== undefined){
-                        var radioButton = document.getElementById(trumpSuit+"Trump");
-                        radioButton.click();
-                    }                 
-                });
-
-                socket.on('set trump rank', function(inputTrumpRank){
-                    $('#trumpRank').val(inputTrumpRank);
-                });
-
-                socket.on('chat message', function(msg){
-                    $('#messages').append($('<div>').text(msg));
-                    if(msg.indexOf("SUCCESS") !== -1){
-                        //okay if this executes again
-
+                    socket.on('enable game settings', function(){
                         document.getElementById("updateSettings").disabled = false;
-                        document.getElementById("sort").disabled = false;
+                    });
+
+                    socket.on('enable draw button', function(playerNum){
+                        thisPlayerNum = playerNum+1;
                         document.getElementById("draw").disabled = false;
-                        document.getElementById("play").disabled = false;
+                        let playerSidebarID = "player" + thisPlayerNum;
+                        console.log(playerSidebarID);
+                        document.getElementById(playerSidebarID).style = "color:green;font-weight:bold";
+                        // $('#${playerSidebarID}').toggleClass("green black");        
+                    });
+
+                    socket.on('chat message card', function(card){
+                        $('#messages').prepend(createImageNode(card, card, "chat"));
+                    });
+
+                    socket.on('serve card request', function(cardServed){
+                            console.log("You got a " + cardServed);
+                            var image = document.getElementById("img1").src = cardServed + ".png";
+                            console.log("Image source: " + document.getElementById("img1").src);
+                            document.getElementById( "img1" ).style.display = "inline"; 
+                    });
+
+                    function createImageNode(fileName, altText, location) {
+                        // console.log(fileName);
+                        const img = new Image();
+
+                        img.class = "cardsInHand";
+                        img.src = fileName+".png";
+                        img.alt = altText;
+                        if(location === "hand"){
+                            img.id = fileName;
+                        }
+                        else{
+                            img.id = fileName+"played"
+                        }             
+                        img.style="border:2px solid black";
+                        return img;
                     }
-                });
-
-                socket.on('enable buttons', function(){
-                    document.getElementById("draw").disabled = false;
-                    document.getElementById("play").disabled = false;
-                });
-
-                socket.on('chat message card', function(card){
-                    $('#messages').append(createImageNode(card, card, "chat"));
-                });
-
-                socket.on('serve card request', function(cardServed){
-                        console.log("You got a " + cardServed);
-                        var image = document.getElementById("img1").src = cardServed + ".png";
-                        console.log("Image source: " + document.getElementById("img1").src);
-                        document.getElementById( "img1" ).style.display = "inline"; 
-                });
-
-                function createImageNode(fileName, altText, location) {
-                    // console.log(fileName);
-                    const img = new Image();
-
-                    img.class = "cardsInHand";
-                    img.src = fileName+".png";
-                    img.alt = altText;
-                    if(location === "hand"){
-                        img.id = fileName;
-                    }
-                    else{
-                        img.id = fileName+"played"
-                    }
-
                     
-                    
-                    img.style="border:2px solid black";
-                    return img;
-                }
-                
-                socket.on('serve draw card', function(card){
-                    const arrayImagesElement = document.getElementById("arrayImages");
-                    arrayImagesElement.appendChild(createImageNode(card, card, "hand"));
-                })
+                    socket.on('serve draw card', function(card){
+                        const arrayImagesElement = document.getElementById("arrayImages");
+                        arrayImagesElement.appendChild(createImageNode(card, card, "hand"));
+                    })
 
-                socket.on('serve card array', function(cards){
-                    var images = cards;
-                    // console.log(images);
-                    const arrayImagesElement = document.getElementById("arrayImages");
-                    
-                    while (arrayImagesElement.lastElementChild) {
-                        arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
-                    }
-                    images.forEach(img =>{
-                        arrayImagesElement.appendChild(createImageNode(img, img, "hand"));
+                    socket.on('serve card array', function(cards){
+                        var images = cards;
+                        // console.log(images);
+                        const arrayImagesElement = document.getElementById("arrayImages");
+                        
+                        while (arrayImagesElement.lastElementChild) {
+                            arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
+                        }
+                        images.forEach(img =>{
+                            arrayImagesElement.appendChild(createImageNode(img, img, "hand"));
+                        });
+                    });
+
+                    $('#arrayImages').on('click', 'img', function(){
+                        // alert($(this).attr('src'));
+                        $(this).toggleClass("active");
+                        // console.log($(this));
+                        if($(this)[0].className === 'active'){
+                            // console.log("Made active");
+                            $(this)[0].style="border:6px solid red";
+                        }
+                        else{
+                            // console.log("Unselected");
+                            $(this)[0].style="border:2px solid black";
+                        }
+                        console.log("# of cards selected: " + $(".hi2 img.active").length);
                     });
                 });
-
-                $('#arrayImages').on('click', 'img', function(){
-                    // alert($(this).attr('src'));
-                    $(this).toggleClass("active");
-                    // console.log($(this));
-                    if($(this)[0].className === 'active'){
-                        // console.log("Made active");
-                        $(this)[0].style="border:6px solid red";
-                    }
-                    else{
-                        // console.log("Unselected");
-                        $(this)[0].style="border:2px solid black";
-                    }
-                    console.log("# of cards selected: " + $(".hi2 img.active").length);
-                });
-            });
-        </script>
+            </script>
+        </div>
+        
+        
+        <!-- To do: Replace all the nonbreaking spaces with a table-->
+        
     </body>
 </html>

@@ -42,6 +42,7 @@ let playerIndices = [];
 // ** For dealing cards
 let currCard = 0;
 let indices = undefined;
+let currPlayerAllowedToDraw = 0;
 
 // console.log(constants.allCardsObj);
 
@@ -77,6 +78,8 @@ class Player{
     getTeam(){ return this.m_team; }
 
     getName(){ return this.m_name; }
+
+    getNumber(){ return this.m_playerNum; }
 
     addCardToHand(cardObj){
         this.m_cards[cardObj.suit].push(cardObj);
@@ -191,16 +194,33 @@ class Player{
     }
 }
 
+function incTurnToNextPlayer(){
+    currPlayerAllowedToDraw = (currPlayerAllowedToDraw+1)%numPlayers;
+    return currPlayerAllowedToDraw;
+}
+
+function setCurrPlayerTurn(sockId){
+    let i = 0;
+    for(; i<players.length; i++){
+        if(players[i].getSocketID === sockId){
+            currPlayerAllowedToDraw = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 app.get('/image1', function(req, res){
     res.sendFile(__dirname + '/imagePage.html');
 })
 
 app.get('/', function(req, res){
-    console.log(req.body);
+    
     if(gameID === undefined || gameID === ""){
         res.render('home_page', {createGame: true});
     }
     else{
+        console.log(req.body);
         res.render('home_page', {
             createGame: false,
             playerIndicesVal: playerIndices
@@ -209,12 +229,12 @@ app.get('/', function(req, res){
 });
 
 app.post('/', function(req, res){
-    console.log(req.body);
-    console.log(parseInt(req.body.numDecks));
+    // console.log(req.body);
+    // console.log(parseInt(req.body.numDecks));
     if(gameID === undefined || gameID === ""){
         //creating a new game
         if(!req.body.numDecks || !req.body.numPlayers || !req.body.kittySize || 
-            !req.body.numPlayers.match(/^[0-9]*[02468]$/) || 
+            !req.body.numPlayers.match(/^[0-9]*$/) || 
             !req.body.numDecks.match(/^[0-9]*$/) || 
             !req.body.kittySize.match(/^[0-9]*$/) ){
             res.render('home_page', {message: "Error in an input field", createGame: true});
@@ -239,6 +259,7 @@ app.post('/', function(req, res){
         } 
     }
     else{
+        console.log(req.body);
         if(req.body.gameID !== gameID){
             res.render('home_page', {
                 message: "Invalid game ID",
@@ -253,17 +274,18 @@ app.post('/', function(req, res){
                 playerIndicesVal: playerIndices
             });
         }
+        else if(req.body.playerNumber === undefined){
+            res.render('home_page', {
+                message: "Error: Must specify a team and player number",
+                createGame: false,
+                playerIndicesVal: playerIndices
+            });
+        }
         else{
             //to do: no duplicate players allowed
             var newPlayer = new Player(req.body.playerName, parseInt(req.body.playerNumber));
             players.push(newPlayer);
-            if(req.body.playerNumber === undefined){
-                res.render('home_page', {
-                    message: "Error: Must specify a team and player number",
-                    createGame: false,
-                    playerIndicesVal: playerIndices
-                });
-            }
+            
             if(parseInt(req.body.playerNumber)%2 == 1){
                 newPlayer.setTeam(1);
             }
@@ -299,6 +321,17 @@ function isSocketAssociated(socketID){
     return false;
 }
 
+function getPlayerNamesAndNumbers(){
+    var playerNamesAndNumbers = [];
+    for(let i = 0; i<players.length; i++){
+        playerNamesAndNumbers[players[i].getNumber()] = new Object({
+            name: players[i].getName(),
+            number: players[i].getNumber()
+        });
+    }
+    return playerNamesAndNumbers;
+}
+
 app.get('/play/:id', function(req, res){
     //TODO: convert this to cookie? Not sure better or worse
     if(gameID === ""){
@@ -320,7 +353,7 @@ io.on('connection', function(socket){
         console.log('user disconnected');
     });
     socket.on('chat message', function(msg){
-        console.log('message sent: ' + msg);
+        console.log('message sent: ' + "Message: " +msg);
 
         //don't accept messages until player self-identifies
         if(!isSocketAssociated(socket.id)){
@@ -328,20 +361,23 @@ io.on('connection', function(socket){
             console.log("Trying to associating socket with player...");
             if(!assocSockIDwithName(msg, socket.id))
             {
-                    socket.emit('chat message', "Private Msg: ERROR: invalid name or team, try again");
+                socket.emit('chat message', "(Private Msg) ERROR: invalid name or team, try again");
             }
             else{
-                socket.emit('chat message', "Private Msg: SUCCESS: Name set, waiting for other players to join");
+                socket.emit('chat message', "(Private Msg) SUCCESS: Name set, waiting for other players to join");
+                io.emit('add sidebar player', getPlayerNamesAndNumbers());
                 if(players.length === numPlayers){
-                    io.emit('chat message', "Status: All players have joined!");
-                    
-                    io.to(`${players[0].getSocketID}`).emit('enable buttons'); //by default, first player is enabled
+                    console.log("num players: " + numPlayers + "; players.length: " + players.length);
+                    io.emit('chat message', "STATUS: All players have joined!");
+                    setCurrPlayerTurn(socket.id);
+                    io.to(`${players[0].getSocketID()}`).emit('enable draw button', currPlayerAllowedToDraw); //by default, first player is enabled
+                    io.emit('enable game settings');
                 }
             }
         }
         else{
-            socket.broadcast.emit('chat message', 'Who see this??');
-            io.emit('chat message', msg); //broadcast to everyone
+            // socket.broadcast.emit('chat message', 'Who see this??');
+            io.emit('chat message', "Message: " +msg); //broadcast to everyone
         }
     });
     
@@ -351,10 +387,11 @@ io.on('connection', function(socket){
     });
 
     socket.on('reveal kitty', function(){
-        io.emit('chat message', "Revealing kitty cards: ");
+        
         for(let i = 0; i< kittyCards.length; i++){
             io.emit('chat message card', kittyCards[i]);
         }
+        io.emit('chat message', "KITTY: Revealing kitty cards: ");
     });
 
     socket.on('draw card', function(sockId){
@@ -370,6 +407,10 @@ io.on('connection', function(socket){
             // socket.emit('serve draw card', selectedCardStr);
             socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
             currCard += 1;
+            console.log(players[currPlayerAllowedToDraw].getSocketID());
+            io.to(`${players[currPlayerAllowedToDraw].getSocketID()}`).emit('enable draw button', players[currPlayerAllowedToDraw].getNumber());
+            incTurnToNextPlayer();
+
         }
         else{
             sockIDtoPlayer[sockId].sortCurrCards();
@@ -405,17 +446,21 @@ io.on('connection', function(socket){
         console.log(starterChecked + " " + trumpSuit);
         if(starterChecked === "starter"){
             currentStarter = sockIDtoPlayer[socket.id];
-            io.emit('chat message', 'Player ' + sockIDtoPlayer[socket.id].getName() + " is now the starter");
+            io.emit('chat message', 'GAME: Player ' + sockIDtoPlayer[socket.id].getName() + " is now the starter");
+            io.to(`${socket.id}`).emit('enable draw button', sockIDtoPlayer[socket.id].getNumber());
             socket.broadcast.emit('uncheck starter');
+        }
+        else{
+            io.to(`${socket.id}`).emit('uncheck starter');
         }
         if(trumpSuit !== undefined){
             currTrumpSuit = trumpSuit;
-            io.emit('chat message', "The trump suit is now " + trumpSuit);
+            io.emit('chat message', "GAME: The trump suit is now " + trumpSuit);
             io.emit('set trump suit', trumpSuit);
         }
         if(trumpRank !== undefined && trumpRank !== ""){
             currTrumpRank = trumpRank;
-            io.emit('chat message', "The trump rank is now " + trumpRank);
+            io.emit('chat message', "GAME: The trump rank is now " + trumpRank);
             io.emit('set trump rank', trumpRank);
         }
     });
@@ -431,23 +476,23 @@ io.on('connection', function(socket){
                 selectedCardObj = constants.allCardsObj[indices[index]%54];
                 
                 sockIDtoPlayer[sockId].addCardToHand(selectedCardObj);
-                console.log("Dealt kitty card " + selectedCardStr + " to player " + sockId);
+                console.log("KITTY: Dealt kitty card " + selectedCardStr + " to player " + sockId);
                 // socket.emit('serve draw card', selectedCardStr);
                 socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
                 currCard += 1;
             }
             socket.emit('kitty no draw yes set aside', kittySize);
-            io.emit('chat message', "Player " + sockIDtoPlayer[sockId].getName() + " has drawn the kitty");
+            io.emit('chat message', "KITTY: Player " + sockIDtoPlayer[sockId].getName() + " has drawn the kitty");
         }
     });
 
     socket.on('set aside kitty', function(setAsideCards){
         if(setAsideCards.length !== kittySize){
-            socket.emit('chat message', "Private Msg: ERROR: Incorrect kitty size");
+            socket.emit('chat message', "(Private Msg) ERROR: Incorrect kitty size");
         }
         else{
             kittyCards = setAsideCards;
-            io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " has set aside the kitty");
+            io.emit('chat message', "KITTY: Player " + sockIDtoPlayer[socket.id].getName() + " has set aside the kitty");
             for(let i = 0; i< setAsideCards.length; i++){
                 // console.log(setAsideCards[i]);
                 sockIDtoPlayer[socket.id].removeCardFromHand(constants.cardStrToObj(setAsideCards[i]));
@@ -458,17 +503,19 @@ io.on('connection', function(socket){
 
     socket.on('play card req', function(playCardReq){
         console.log("Got card play request from " + socket.id);
-        io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " played:");
+        io.emit('chat message', constants.sixtyDashes);
         for(let i = 0; i< playCardReq.length; i++){
             // console.log(playCardReq[i]);
             sockIDtoPlayer[socket.id].removeCardFromHand(constants.cardStrToObj(playCardReq[i]));
             // io.emit('chat message', playCardReq[i]);
             io.emit('chat message card', playCardReq[i]);
         }
+        io.emit('chat message', "GAME: Player " + sockIDtoPlayer[socket.id].getName() + " played:");
+        io.emit('chat message', constants.sixtyDashes);
     });
     socket.on('undo card play', function(playCardReq){
-        console.log("Got card undo request from " + socket.id);
-        io.emit('chat message', "Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
+        console.log("UNDO: Got card undo request from " + socket.id);
+        io.emit('chat message', "UNDO: Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
         for(let i = 0; i< playCardReq.length; i++){
             sockIDtoPlayer[socket.id].addCardToHand(constants.cardStrToObj(playCardReq[i]));
             socket.emit('serve card array', sockIDtoPlayer[socket.id].flattenCardArrayRetString());
@@ -476,7 +523,7 @@ io.on('connection', function(socket){
         }
     })
     //emit only to that socket
-    socket.emit('chat message', 'Welcome, please enter your name again.');
+    socket.emit('chat message', 'GAME: Welcome, please enter your name again.');
 });
 
 app.get('*', function(req, res){

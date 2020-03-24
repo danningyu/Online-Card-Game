@@ -88,5 +88,7 @@ exports.cardStrToObj = function(cardStr){
     return cardObj;
 }
 
+exports.sixtyDashes = "------------------------------------------------------------"
+
 // console.log(allCards);
 // console.log(allCards.length)
