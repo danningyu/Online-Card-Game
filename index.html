@@ -50,8 +50,25 @@
                 color: black;
             }
 
-            #arrayImages img {  width: 5%; height: auto}
-            #messages img {width: 5%; height: auto}
+            /* #sidebarhtml{
+                color: red;
+            } */
+
+            #arrayImages {
+                position: relative;
+            }
+
+            #arrayImages img {  
+                width: 5%; 
+                height: auto;
+                /* position: absolute; */
+                /* top: 0;
+                left: 10; */
+            }
+            #messages img {
+                width: 5%; 
+                height: auto
+            }
         </style>
         <title>Tractor Card Game App</title>
     </head>
@@ -67,8 +84,8 @@
         </div>
         
         <!-- Page content -->
-        <div class="main">
-            <h4>Game Settings</h4>
+        <div class="main" id="mainbody">
+            <h4 id="gamesettings">Game Settings</h4>
             I am the starter (lets you draw first)&nbsp;<label><input type="checkbox" id="starterCheckbox" value="starter"></label>
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Trump Rank
             <select id="trumpRank" name="trumpRank2">
@@ -109,7 +126,7 @@
 
             <div id="arrayImages" class="hi2"></div>
             
-            <br><table>
+            <br><table style="position:relative">
                 <tr>
                     <td>
                         Draw Cards
@@ -145,6 +162,8 @@
                     var playedCardHistory = []; //stack for "undos"
                     var kittySizeClient = -1; //kitty size, transmitted by server
                     var thisPlayerNum = -1; //what player number this client is
+                    var thisPlayerName = "";
+                    var numPlayers = -1;
                     // trasmitted by server
                     $('#form1').submit(function(e){
                         //for chatting
@@ -162,7 +181,7 @@
                         document.getElementById("draw").disabled = true;
                         let thisPlayerSidebarId = "player"+thisPlayerNum;
                         console.log(thisPlayerSidebarId);
-                        document.getElementById(thisPlayerSidebarId).style="color:red"
+                        document.getElementById(thisPlayerSidebarId).style="color:red" //disable, aka not your turn
                         socket.emit('draw card', socket.id);
                         console.log(socket.id + " requested to draw a card");
                         
@@ -264,7 +283,27 @@
                         socket.emit('reveal kitty');
                     });
 
-                    
+                    socket.on('set player details', function(sentPlayerName, sentPlayerNum, sentNumPlayers){
+                        thisPlayerNum = sentPlayerNum;
+                        thisPlayerName = sentPlayerName;
+                        numPlayers = sentNumPlayers;
+                        var playerDetailsStr = " (Your name: " + thisPlayerName  + "; Your player number: " + thisPlayerNum + ")";
+                        document.getElementById('gamesettings').innerHTML = "Game Settings" + playerDetailsStr;
+
+                    });
+
+                    socket.on('update sidebar with active', function(activePlayerNum){
+                        let playerSidebarID = "player" + activePlayerNum;
+                        let prevPlayerNum = activePlayerNum - 1 >=0 ? activePlayerNum -1 : numPlayers -1;
+                        console.log(playerSidebarID);
+
+                        var childElem = document.getElementById("sidebarhtml").children;
+                        for(let i = 0; i<childElem.length; i++){
+                            childElem[i].style="color:red";
+                        }
+                        document.getElementById(playerSidebarID).style = "color:green;font-weight:bold";
+                        
+                    });
 
                     socket.on('add sidebar player', function(players){
                         console.log(players);
@@ -340,11 +379,9 @@
                     });
 
                     socket.on('enable draw button', function(playerNum){
-                        thisPlayerNum = playerNum+1;
+                        // thisPlayerNum = playerNum;
                         document.getElementById("draw").disabled = false;
-                        let playerSidebarID = "player" + thisPlayerNum;
-                        console.log(playerSidebarID);
-                        document.getElementById(playerSidebarID).style = "color:green;font-weight:bold";
+                        
                         // $('#${playerSidebarID}').toggleClass("green black");        
                     });
 

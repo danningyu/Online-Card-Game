@@ -202,12 +202,22 @@ function incTurnToNextPlayer(){
 function setCurrPlayerTurn(sockId){
     let i = 0;
     for(; i<players.length; i++){
-        if(players[i].getSocketID === sockId){
-            currPlayerAllowedToDraw = i;
+        if(players[i] !== undefined && players[i].getSocketID === sockId){
+            currPlayerAllowedToDraw = players[i].getNumber();
             return true;
         }
     }
     return false;
+}
+
+//to do: create a singleton class that's basically a wrapper for all the players...
+function allPlayersPresent(){
+    for(let i = 0; i<players.length; i++){
+        if(players[i] == undefined || players[i] == null || players[i].getSocketID() == ""){
+            return false;
+        }
+    }
+    return true;
 }
 
 app.get('/image1', function(req, res){
@@ -283,8 +293,9 @@ app.post('/', function(req, res){
         }
         else{
             //to do: no duplicate players allowed
+            //playerNumber is 0 indexed!
             var newPlayer = new Player(req.body.playerName, parseInt(req.body.playerNumber));
-            players.push(newPlayer);
+            players[parseInt(req.body.playerNumber)] = newPlayer;
             
             if(parseInt(req.body.playerNumber)%2 == 1){
                 newPlayer.setTeam(1);
@@ -298,25 +309,29 @@ app.post('/', function(req, res){
 });
 
 function assocSockIDwithName(playerName, socketID){
+    console.log(players);
     for(let i = 0; i<players.length; i++){
         var player = players[i];
-        if(playerName === player.getName()){
+        if(players[i] !== undefined && playerName === player.getName()){
             player.setSocketID(socketID);
             sockIDtoPlayer[socketID] = player;
             console.log(sockIDtoPlayer);
             console.log(player);
             console.log("Name " + playerName + " set for " + socketID);
             return true;
+            
         }
+        
     }
     return false;
 }
 
 function isSocketAssociated(socketID){
     for(let i = 0; i<players.length; i++){
-        if(players[i].getSocketID() === socketID){
+        if(players[i] != undefined && players[i].getSocketID() === socketID){
             return true;
         }
+        
     }
     return false;
 }
@@ -324,10 +339,13 @@ function isSocketAssociated(socketID){
 function getPlayerNamesAndNumbers(){
     var playerNamesAndNumbers = [];
     for(let i = 0; i<players.length; i++){
-        playerNamesAndNumbers[players[i].getNumber()] = new Object({
-            name: players[i].getName(),
-            number: players[i].getNumber()
-        });
+        if(players[i] !== undefined){
+            playerNamesAndNumbers[players[i].getNumber()] = new Object({
+                name: players[i].getName(),
+                number: players[i].getNumber()
+            });
+        }
+        
     }
     return playerNamesAndNumbers;
 }
@@ -365,18 +383,22 @@ io.on('connection', function(socket){
             }
             else{
                 socket.emit('chat message', "(Private Msg) SUCCESS: Name set, waiting for other players to join");
+                socket.emit('set player details', sockIDtoPlayer[socket.id].getName(), sockIDtoPlayer[socket.id].getNumber(), numPlayers);
                 io.emit('add sidebar player', getPlayerNamesAndNumbers());
-                if(players.length === numPlayers){
+                if(allPlayersPresent()){
                     console.log("num players: " + numPlayers + "; players.length: " + players.length);
                     io.emit('chat message', "STATUS: All players have joined!");
-                    setCurrPlayerTurn(socket.id);
+                    setCurrPlayerTurn(players[0].getSocketID());
+                    console.log("It is player " + currPlayerAllowedToDraw + "'s turn");
+                    io.emit('update sidebar with active', currPlayerAllowedToDraw);
                     io.to(`${players[0].getSocketID()}`).emit('enable draw button', currPlayerAllowedToDraw); //by default, first player is enabled
+                    
                     io.emit('enable game settings');
                 }
             }
         }
         else{
-            // socket.broadcast.emit('chat message', 'Who see this??');
+            //default behavior: a chat msg was sent
             io.emit('chat message', "Message: " +msg); //broadcast to everyone
         }
     });
@@ -407,10 +429,11 @@ io.on('connection', function(socket){
             // socket.emit('serve draw card', selectedCardStr);
             socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
             currCard += 1;
+            incTurnToNextPlayer();
             console.log(players[currPlayerAllowedToDraw].getSocketID());
             io.to(`${players[currPlayerAllowedToDraw].getSocketID()}`).emit('enable draw button', players[currPlayerAllowedToDraw].getNumber());
-            incTurnToNextPlayer();
-
+            console.log("Making it player " + currPlayerAllowedToDraw + "'s turn");
+            io.emit('update sidebar with active', currPlayerAllowedToDraw);
         }
         else{
             sockIDtoPlayer[sockId].sortCurrCards();
@@ -446,9 +469,13 @@ io.on('connection', function(socket){
         console.log(starterChecked + " " + trumpSuit);
         if(starterChecked === "starter"){
             currentStarter = sockIDtoPlayer[socket.id];
+            currPlayerAllowedToDraw = sockIDtoPlayer[socket.id].getNumber(); //update who's currently allowed to draw
             io.emit('chat message', 'GAME: Player ' + sockIDtoPlayer[socket.id].getName() + " is now the starter");
             io.to(`${socket.id}`).emit('enable draw button', sockIDtoPlayer[socket.id].getNumber());
-            socket.broadcast.emit('uncheck starter');
+            socket.broadcast.emit('uncheck starter'); //uncheck everyone else except 
+
+            //override and let starter draw (for starting)
+            io.emit('update sidebar with active', currPlayerAllowedToDraw);
         }
         else{
             io.to(`${socket.id}`).emit('uncheck starter');
@@ -513,6 +540,7 @@ io.on('connection', function(socket){
         io.emit('chat message', "GAME: Player " + sockIDtoPlayer[socket.id].getName() + " played:");
         io.emit('chat message', constants.sixtyDashes);
     });
+
     socket.on('undo card play', function(playCardReq){
         console.log("UNDO: Got card undo request from " + socket.id);
         io.emit('chat message', "UNDO: Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");

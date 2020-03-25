@@ -27,16 +27,16 @@ html
                     input(name = "gameID" type = "text" autocomplete="off" style="width:225px" required placeholder = "Game ID")
                 div
                     input(name = "playerName" type = "text" autocomplete="off" style="width:225px" required placeholder = "Your Name, no commas allowed")
-                div Team 1:
+                div Team Evens:
                     each val in playerIndicesVal
                         if val%2==0
-                            input(type='radio' id=(val+1)+'checkBox' value=val+1 name="playerNumber")
-                            label Player #{val+1} &nbsp;&nbsp;&nbsp;
-                        
-                div Team 2:
+                            input(type='radio' id=val+'checkBox' value=val name="playerNumber")
+                            label Player #{val} &nbsp;&nbsp;&nbsp;
+                div Team Odds:
                     each val in playerIndicesVal
                         if val%2==1
-                            input(type='radio' id=(val+1)+'checkBox' value=val+1 name="playerNumber")
-                            label Player #{val+1} &nbsp;&nbsp;&nbsp;
+                            input(type='radio' id=val+'checkBox' value=val name="playerNumber")
+                            label Player #{val} &nbsp;&nbsp;&nbsp;
+                div Why count from 0? Because this game was written by a lazy CS major.
                 div
                     button(type = "submit") Join Game!
