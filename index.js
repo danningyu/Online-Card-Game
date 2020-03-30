@@ -38,13 +38,12 @@ let currTrumpSuit = ""; //type: string
 // ("clubs", "diamonds", "hearts", "spades", "notrump")
 let currTrumpRank = "";
 let playerIndices = [];
+let gameState = 0; //0 for drawing, 1 for playing
 
 // ** For dealing cards
 let currCard = 0;
 let indices = undefined;
 let currPlayerAllowedToDraw = 0;
-
-// console.log(constants.allCardsObj);
 
 class Player{
     constructor(name, playerNum){
@@ -239,8 +238,6 @@ app.get('/', function(req, res){
 });
 
 app.post('/', function(req, res){
-    // console.log(req.body);
-    // console.log(parseInt(req.body.numDecks));
     if(gameID === undefined || gameID === ""){
         //creating a new game
         if(!req.body.numDecks || !req.body.numPlayers || !req.body.kittySize || 
@@ -330,8 +327,7 @@ function isSocketAssociated(socketID){
     for(let i = 0; i<players.length; i++){
         if(players[i] != undefined && players[i].getSocketID() === socketID){
             return true;
-        }
-        
+        }      
     }
     return false;
 }
@@ -344,9 +340,8 @@ function getPlayerNamesAndNumbers(){
                 name: players[i].getName(),
                 number: players[i].getNumber()
             });
-        }
-        
-    }
+        }       
+    } // end for loop
     return playerNamesAndNumbers;
 }
 

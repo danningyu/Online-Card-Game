@@ -15,24 +15,10 @@
             padding-left: 20px;
             }
 
-            /* The navigation menu links
-            .sidenav a {
-            padding: 6px 8px 6px 16px;
-            text-decoration: none;
-            font-size: 20px;
-            color: #7680db;
-            display: block;
-            }
-
-            When you mouse over the navigation links, change their color
-            .sidenav a:hover {
-            color: #d8da66;
-            } */
-
             /* Style page content */
             .main {
             margin-left: 220px; /* Same as the width of the sidebar */
-            padding: 0px 10px;
+            /* padding: 0px 10px; */
             }
 
             /* On smaller screens, where height is less than 450px, change the 
@@ -54,17 +40,17 @@
                 color: red;
             } */
 
-            #arrayImages {
+            /* #arrayImages {
                 position: relative;
-            }
+            } */
 
-            #arrayImages img {  
+            /* #arrayImages img {  
                 width: 5%; 
                 height: auto;
-                /* position: absolute; */
-                /* top: 0;
-                left: 10; */
-            }
+                position: absolute;
+                top: 0;
+                left: 10;
+            } */
             #messages img {
                 width: 5%; 
                 height: auto
@@ -115,7 +101,6 @@
             <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
             <label for="notrumpTrump">No Trump</label><br>
             
-            
             <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
             <h4 style="display:none">Starter (zhuangjia) Options</h4>
             <button id="drawKitty" type="submit" disabled style="display:none">Draw Kitty Cards</button>
@@ -164,6 +149,7 @@
                     var thisPlayerNum = -1; //what player number this client is
                     var thisPlayerName = "";
                     var numPlayers = -1;
+                    var needToResort = true; //need to re-sort the first time for some reason
                     // trasmitted by server
                     $('#form1').submit(function(e){
                         //for chatting
@@ -239,9 +225,6 @@
                         var trumpSuit = $("input:radio[name='trumpSuit']:checked").val();
                         var selTrumpRank = $('#trumpRank').val();
                         console.log(selTrumpRank);
-                        // console.log($('#starterCheckbox:checked').val());
-                        // console.log($("input:radio[name='trumpSuit']:checked").val());
-                        // console.log("Submitted form");
                         if(isChecked === "starter"){
                             document.getElementById("drawKitty").disabled = false;
                             document.getElementById("draw").disabled = false;
@@ -261,9 +244,7 @@
                         if($(".hi2 img.active").length !== 0 && $(".hi2 img.active").length === kittySizeClient){
                             var cardsToPlay = [];
                             const arrayImagesElement = document.getElementById("arrayImages");
-                            //console.log(socket.id + " played card(s): ");
                             for(let i = 0; i< $(".hi2 img.active").length; i++){
-                                // console.log($(".hi2 img.active")[i].id);
                                 cardsToPlay.push($(".hi2 img.active")[i].id);
                                 
                             }
@@ -323,7 +304,6 @@
                                 let playerNum = players[i].number;
                                 var divElem = document.createElement('div');
                                 divElem.id = "player"+playerNum;
-                                // divElem.class = "green";
                                 divElem.style = "color:red";
                                 if(playerNum%2 === 1){
                                     var content = document.createTextNode("Player " + playerNum + ": " + players[i].name + " (Team 1)");
@@ -333,8 +313,6 @@
                                 }                                
                                 divElem.appendChild(content);
                                 sidebar.appendChild(divElem);
-                                // $('#sidebarhtml').append($('<div>').text(content));
-                                // $('#sidebarhtml').append($('<br>'));
                             }
                         }
                     })
@@ -355,19 +333,20 @@
                         if(trumpSuit !== "" && trumpSuit !== undefined && trumpSuit !== null){
                             var radioButton = document.getElementById(trumpSuit+"Trump");
                             radioButton.click();
-                        }                 
+                            socket.emit('sort hand');
+                        }
+                          
                     });
 
                     socket.on('set trump rank', function(inputTrumpRank){
                         $('#trumpRank').val(inputTrumpRank);
+                        socket.emit('sort hand');
                     });
 
                     socket.on('chat message', function(msg){
                         $('#messages').prepend($('<div>').text(msg));
                         if(msg.indexOf("SUCCESS") !== -1){
-                            //okay if this executes again
-
-                            
+                            //okay if this executes again (idempotent)                        
 
                             document.getElementById("sort").disabled = false; //you can sort anytime
                             document.getElementById("play").disabled = false; //you can play anytime
@@ -386,7 +365,7 @@
                     });
 
                     socket.on('chat message card', function(card){
-                        $('#messages').prepend(createImageNode(card, card, "chat"));
+                        $('#messages').prepend(createImageNode(card, card, "chat", 0));
                     });
 
                     socket.on('serve card request', function(cardServed){
@@ -396,26 +375,40 @@
                             document.getElementById( "img1" ).style.display = "inline"; 
                     });
 
-                    function createImageNode(fileName, altText, location) {
+                    function createImageNode(fileName, altText, location, imageNum) {
                         // console.log(fileName);
                         const img = new Image();
 
                         img.class = "cardsInHand";
                         img.src = fileName+".png";
                         img.alt = altText;
+                        img.style = ""
                         if(location === "hand"){
                             img.id = fileName;
                         }
                         else{
                             img.id = fileName+"played"
-                        }             
-                        img.style="border:2px solid black";
+                        }
+                        if(imageNum === 0){
+                            img.style = "border:2px solid black;width:5%;height:auto";
+                        }
+                        else{
+                            var firstImage = $('#arrayImages img').first()[0];
+                            var firstImageOffset = $('#arrayImages img').first().offset();
+                            // console.log(firstImageOffset.left + ",firstImageOffset" + firstImageOffset.top);
+                            var allCardParent = document.getElementById("arrayImages");
+                            var newLeft = (firstImageOffset.left + (firstImage.width/3)*imageNum);
+                            var firstImgTop = firstImageOffset.top;
+                            var styleAddition = "border:2px solid black;width:" + firstImage.width + "px;height:auto;position:absolute;top:" + firstImgTop + "px;left:" + newLeft + "px";
+                            // console.log(styleAddition);
+                            img.style = styleAddition;
+                        }
                         return img;
                     }
                     
                     socket.on('serve draw card', function(card){
                         const arrayImagesElement = document.getElementById("arrayImages");
-                        arrayImagesElement.appendChild(createImageNode(card, card, "hand"));
+                        arrayImagesElement.appendChild(createImageNode(card, card, "hand", 1));
                     })
 
                     socket.on('serve card array', function(cards){
@@ -426,22 +419,31 @@
                         while (arrayImagesElement.lastElementChild) {
                             arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
                         }
-                        images.forEach(img =>{
-                            arrayImagesElement.appendChild(createImageNode(img, img, "hand"));
-                        });
+                        for(let i = 0; i<cards.length; i++){
+                            arrayImagesElement.appendChild(createImageNode(images[i], images[i], "hand", i));
+                        }
+                        // document.getElementById('sort').click();
+                        if(needToResort){
+                            socket.emit('sort hand');
+                            needToResort = false;
+
+                        }                  
+                        console.log("Resorted cards");
                     });
 
                     $('#arrayImages').on('click', 'img', function(){
-                        // alert($(this).attr('src'));
                         $(this).toggleClass("active");
-                        // console.log($(this));
                         if($(this)[0].className === 'active'){
-                            // console.log("Made active");
-                            $(this)[0].style="border:6px solid red";
+                            $(this).css("border", "6px solid red");
+                            var offset = $(this).offset();
+                            console.log(offset.left + ", " + offset.top);
+                            console.log($(document).height() + ", " + $(document).width());
                         }
                         else{
-                            // console.log("Unselected");
-                            $(this)[0].style="border:2px solid black";
+                            $(this).css("border", "2px solid black");
+                            var offset = $(this).offset();
+                            console.log(offset.left + ", " + offset.top);
+
                         }
                         console.log("# of cards selected: " + $(".hi2 img.active").length);
                     });
