@@ -101,11 +101,11 @@
             <input type="radio" id="notrumpTrump" name="trumpSuit" value="notrump">
             <label for="notrumpTrump">No Trump</label><br>
             
-            <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br>
-            <h4 style="display:none">Starter (zhuangjia) Options</h4>
+            <button id="updateSettings" type="submit" disabled>Update Game Settings</button><br><br>
+            <div style="display:none" id="starter"><b>Starter (zhuangjia) Options&nbsp;&nbsp;&nbsp;</b></div>
             <button id="drawKitty" type="submit" disabled style="display:none">Draw Kitty Cards</button>
             <button id="setAsideKitty" type="submit" disabled style="display:none">Set Aside Kitty Cards</button>
-            <button id="revealKitty" type="submit" disabled style="display:none">Reveal Kitty Cards</button>
+            <button id="revealKitty" type="submit" disabled style="display:none">Reveal Kitty Cards</button><br><br>
 
             <img style="display:none" id="img1" src="" class="ogimage"/>
 
@@ -170,6 +170,8 @@
                         document.getElementById(thisPlayerSidebarId).style="color:red" //disable, aka not your turn
                         socket.emit('draw card', socket.id);
                         console.log(socket.id + " requested to draw a card");
+                        needToResort = true;
+                        socket.emit('sort hand');
                         
                     });
 
@@ -199,6 +201,8 @@
                             playedCardHistory.push(cardsToPlay);
                             document.getElementById("undo").disabled = false;
                             socket.emit('play card req', cardsToPlay);
+                            needToResort = true;
+                            socket.emit('sort hand');
                         }
 
                     });
@@ -212,10 +216,13 @@
                             document.getElementById("undo").disabled = true;
                         }
                         socket.emit('undo card play', lastPlayedCards);
+                        needToResort = true;
+                        socket.emit('sort hand');
                     });
 
                     $('#sort').click(function(e){
                         e.preventDefault();
+                        needToResort = true;
                         socket.emit('sort hand');
                     })
 
@@ -227,6 +234,10 @@
                         console.log(selTrumpRank);
                         if(isChecked === "starter"){
                             document.getElementById("drawKitty").disabled = false;
+                            document.getElementById("starter").style = "";
+                            document.getElementById("drawKitty").style = "";
+                            document.getElementById("setAsideKitty").style = "";
+                            document.getElementById("revealKitty").style = "";
                             document.getElementById("draw").disabled = false;
                         }
 
@@ -315,7 +326,11 @@
                                 sidebar.appendChild(divElem);
                             }
                         }
-                    })
+                    });
+
+                    socket.on('disable drawing', function(){
+                        document.getElementById(draw).disabled = true;
+                    });
 
                     socket.on('kitty no draw yes set aside', function(kittySize){
                         document.getElementById("drawKitty").disabled = true;
@@ -375,6 +390,10 @@
                             document.getElementById( "img1" ).style.display = "inline"; 
                     });
 
+                    window.addEventListener("resize", function(event){
+                        console.log(document.body.clientWidth + " wide by " + document.body.clientHeight + ' high');
+                    })
+
                     function createImageNode(fileName, altText, location, imageNum) {
                         // console.log(fileName);
                         const img = new Image();
@@ -395,12 +414,10 @@
                         else{
                             var firstImage = $('#arrayImages img').first()[0];
                             var firstImageOffset = $('#arrayImages img').first().offset();
-                            // console.log(firstImageOffset.left + ",firstImageOffset" + firstImageOffset.top);
                             var allCardParent = document.getElementById("arrayImages");
                             var newLeft = (firstImageOffset.left + (firstImage.width/3)*imageNum);
                             var firstImgTop = firstImageOffset.top;
                             var styleAddition = "border:2px solid black;width:" + firstImage.width + "px;height:auto;position:absolute;top:" + firstImgTop + "px;left:" + newLeft + "px";
-                            // console.log(styleAddition);
                             img.style = styleAddition;
                         }
                         return img;
@@ -426,7 +443,6 @@
                         if(needToResort){
                             socket.emit('sort hand');
                             needToResort = false;
-
                         }                  
                         console.log("Resorted cards");
                     });

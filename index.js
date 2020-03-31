@@ -424,15 +424,22 @@ io.on('connection', function(socket){
             // socket.emit('serve draw card', selectedCardStr);
             socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
             currCard += 1;
-            incTurnToNextPlayer();
-            console.log(players[currPlayerAllowedToDraw].getSocketID());
-            io.to(`${players[currPlayerAllowedToDraw].getSocketID()}`).emit('enable draw button', players[currPlayerAllowedToDraw].getNumber());
-            console.log("Making it player " + currPlayerAllowedToDraw + "'s turn");
-            io.emit('update sidebar with active', currPlayerAllowedToDraw);
+            if(!(currCard < 54*numDecks - kittySize)){
+                io.emit('disable drawing');
+                io.emit('GAME: No more cards to draw');
+                gameState = 1;
+            }
+            else{
+                incTurnToNextPlayer();
+                console.log(players[currPlayerAllowedToDraw].getSocketID());
+                io.to(`${players[currPlayerAllowedToDraw].getSocketID()}`).emit('enable draw button', players[currPlayerAllowedToDraw].getNumber());
+                console.log("Making it player " + currPlayerAllowedToDraw + "'s turn");
+                io.emit('update sidebar with active', currPlayerAllowedToDraw);
+            }           
         }
         else{
             sockIDtoPlayer[sockId].sortCurrCards();
-            socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
+            socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());         
             console.log("No more cards to draw!");
         }      
     });
