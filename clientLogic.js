@@ -6,6 +6,7 @@ $(function () {
     var thisPlayerName = "";
     var numPlayers = -1;
     var needToResort = true; //need to re-sort the first time for some reason
+    var currCards = [];
     // trasmitted by server
     $('#form1').submit(function(e){
         //for chatting
@@ -135,7 +136,7 @@ $(function () {
         thisPlayerNum = sentPlayerNum;
         thisPlayerName = sentPlayerName;
         numPlayers = sentNumPlayers;
-        var playerDetailsStr = " (Your name: " + thisPlayerName  + "; Your player number: " + thisPlayerNum + ")";
+        var playerDetailsStr = " (Your name: " + thisPlayerName  + "; Your player number: " + (thisPlayerNum+1) + ")";
         document.getElementById('gamesettings').innerHTML = "Game Settings" + playerDetailsStr;
 
     });
@@ -156,8 +157,7 @@ $(function () {
     socket.on('add sidebar player', function(players){
         console.log(players);
         var sidebar = document.getElementById('sidebarhtml');
-        
-        
+     
         while (sidebar.lastElementChild) {
             sidebar.removeChild(sidebar.lastElementChild);
         }
@@ -172,11 +172,12 @@ $(function () {
                 var divElem = document.createElement('div');
                 divElem.id = "player"+playerNum;
                 divElem.style = "color:red";
+                //adding 1 here b/c playernum 0 is actually player 1
                 if(playerNum%2 === 1){
-                    var content = document.createTextNode("Player " + playerNum + ": " + players[i].name + " (Team 1)");
+                    var content = document.createTextNode("Player " + (playerNum+1) + ": " + players[i].name + " (Team 2)");
                 }
                 else{
-                    var content = document.createTextNode("Player " + playerNum + ": " + players[i].name + " (Team 2)");
+                    var content = document.createTextNode("Player " + (playerNum+1) + ": " + players[i].name + " (Team 1)");
                 }                                
                 divElem.appendChild(content);
                 sidebar.appendChild(divElem);
@@ -205,8 +206,7 @@ $(function () {
             var radioButton = document.getElementById(trumpSuit+"Trump");
             radioButton.click();
             socket.emit('sort hand');
-        }
-          
+        }         
     });
 
     socket.on('set trump rank', function(inputTrumpRank){
@@ -229,10 +229,7 @@ $(function () {
     });
 
     socket.on('enable draw button', function(playerNum){
-        // thisPlayerNum = playerNum;
-        document.getElementById("draw").disabled = false;
-        
-        // $('#${playerSidebarID}').toggleClass("green black");        
+        document.getElementById("draw").disabled = false;     
     });
 
     socket.on('chat message card', function(card){
@@ -266,7 +263,7 @@ $(function () {
             img.id = fileName+"played"
         }
         if(imageNum === 0){
-            img.style = "border:2px solid black;width:5%;height:auto";
+            img.style = "border:2px solid black;width:4.75%;height:auto";
         }
         else{
             var firstImage = $('#arrayImages img').first()[0];
@@ -283,22 +280,35 @@ $(function () {
     socket.on('serve draw card', function(card){
         const arrayImagesElement = document.getElementById("arrayImages");
         arrayImagesElement.appendChild(createImageNode(card, card, "hand", 1));
-    })
+    });
 
-    socket.on('serve card array', function(cards){
-        var images = cards;
-        // console.log(images);
+    function removeCardsFromHand(){
         const arrayImagesElement = document.getElementById("arrayImages");
-        
         while (arrayImagesElement.lastElementChild) {
             arrayImagesElement.removeChild(arrayImagesElement.lastElementChild);
         }
+    }
+
+    function addCardsToHand(cards){
+        const arrayImagesElement = document.getElementById("arrayImages");
         for(let i = 0; i<cards.length; i++){
-            arrayImagesElement.appendChild(createImageNode(images[i], images[i], "hand", i));
+            arrayImagesElement.appendChild(createImageNode(cards[i], cards[i], "hand", i));
         }
+    }
+
+    function refreshCardsInHand(cards){
+        removeCardsFromHand();
+        addCardsToHand(cards);
+    }
+
+    socket.on('serve card array', function(cards){
+        currCards = cards;
+        // console.log(images);      
+        removeCardsFromHand();
+        addCardsToHand(currCards);
         // document.getElementById('sort').click();
         if(needToResort){
-            socket.emit('sort hand');
+            refreshCardsInHand(currCards);
             needToResort = false;
         }                  
         console.log("Resorted cards");

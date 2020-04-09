@@ -11,12 +11,10 @@ var io = require('socket.io')(http);
 
 var constants = require('./constants/constants.js');
 
-let port = process.env.PORT;
-if (port == null || port == "") {
-  port = 3000;
-}
 
-app.set('view engine', 'pug'); //don't these have to come before doing res.render(form)...?
+let port = process.env.PORT || 3000;
+
+app.set('view engine', 'pug');
 app.set('views', './views');
 app.use(bodyParser.json()); 
 app.use(bodyParser.urlencoded({ extended: true })); 
@@ -25,6 +23,8 @@ app.use(upload.array());
 app.use('/play', express.static(path.join(__dirname + '/images/')));
 app.use('/play', express.static(path.join(__dirname + '/')));
 // ************************ END REQUIRE STATEMENTS AND APP SETUP
+
+const debug = 0;
 
 // ** Game settings
 let numDecks = -1;
@@ -45,6 +45,82 @@ let gameState = 0; //0 for drawing, 1 for playing
 let currCard = 0;
 let indices = undefined;
 let currPlayerAllowedToDraw = 0;
+
+// -------------------- START HELPER FUNCTIONS --------------------
+function incTurnToNextPlayer(){
+    currPlayerAllowedToDraw = (currPlayerAllowedToDraw+1)%numPlayers;
+    return currPlayerAllowedToDraw;
+}
+
+function setCurrPlayerTurn(sockId){
+    let i = 0;
+    for(; i<players.length; i++){
+        if(players[i] !== undefined && players[i].getSocketID === sockId){
+            currPlayerAllowedToDraw = players[i].getNumber();
+            return true;
+        }
+    }
+    return false;
+}
+
+//to do: create a singleton class that's basically a wrapper for all the players...
+function allPlayersPresent(){
+    if(numPlayers !== players.length){
+        return false;
+    }
+    for(let i = 0; i<players.length; i++){    
+        if(players[i] == undefined || players[i] == null || players[i].getSocketID() == ""){
+            return false;
+        }
+    }
+    return true;
+}
+
+function assocSockIDwithName(playerName, socketID){
+    if(debug){
+        console.log(players);
+    }
+    
+    for(let i = 0; i<players.length; i++){
+        var player = players[i];
+        if(players[i] !== undefined && playerName === player.getName()){
+            player.setSocketID(socketID);
+            sockIDtoPlayer[socketID] = player;
+            if(debug){
+                console.log(sockIDtoPlayer);
+                console.log(player);
+                console.log("Name " + playerName + " set for " + socketID);
+            }           
+            return true;          
+        }
+        
+    }
+    return false;
+}
+
+function isSocketAssociated(socketID){
+    for(let i = 0; i<players.length; i++){
+        if(players[i] != undefined && players[i].getSocketID() === socketID){
+            return true;
+        }      
+    }
+    return false;
+}
+
+function getPlayerNamesAndNumbers(){
+    var playerNamesAndNumbers = [];
+    for(let i = 0; i<players.length; i++){
+        if(players[i] !== undefined){
+            playerNamesAndNumbers[players[i].getNumber()] = new Object({
+                name: players[i].getName(),
+                number: players[i].getNumber()
+            });
+        }       
+    } // end for loop
+    return playerNamesAndNumbers;
+}
+
+// -------------------- END HELPER FUNCTIONS --------------------
 
 class Player{
     constructor(name, playerNum){
@@ -134,7 +210,10 @@ class Player{
             
             var adjustedTrumps = [];
             if(currTrumpSuit !== "notrump" && currTrumpSuit !== null){
-                console.log(currTrumpSuit);
+                if(debug){
+                    console.log(currTrumpSuit);
+                }
+                
                 for(let i = 0; i<this.m_cards[currTrumpSuit].length; i++){
                     if(this.m_cards[currTrumpSuit][i].rank !== currTrumpRank){
                         //this if to avoid double counting card that is 
@@ -194,37 +273,6 @@ class Player{
     }
 }
 
-function incTurnToNextPlayer(){
-    currPlayerAllowedToDraw = (currPlayerAllowedToDraw+1)%numPlayers;
-    return currPlayerAllowedToDraw;
-}
-
-function setCurrPlayerTurn(sockId){
-    let i = 0;
-    for(; i<players.length; i++){
-        if(players[i] !== undefined && players[i].getSocketID === sockId){
-            currPlayerAllowedToDraw = players[i].getNumber();
-            return true;
-        }
-    }
-    return false;
-}
-
-//to do: create a singleton class that's basically a wrapper for all the players...
-function allPlayersPresent(){
-    if(numPlayers !== players.length){
-        return false;
-    }
-    for(let i = 0; i<players.length; i++){
-        console.log(players[i]);
-        if(players[i] == undefined || players[i] == null || players[i].getSocketID() == ""){
-            return false;
-        }
-    }
-    console.log("Returning true");
-    return true;
-}
-
 app.get('/image1', function(req, res){
     res.sendFile(__dirname + '/imagePage.html');
 })
@@ -235,7 +283,10 @@ app.get('/', function(req, res){
         res.render('home_page', {createGame: true});
     }
     else{
-        console.log(req.body);
+        if(debug){
+            console.log(req.body);
+        }
+        
         res.render('home_page', {
             createGame: false,
             playerIndicesVal: playerIndices
@@ -253,8 +304,11 @@ app.post('/', function(req, res){
             res.render('home_page', {message: "Error in an input field", createGame: true});
         }
         else if( (parseInt(req.body.numDecks)*54-parseInt(req.body.kittySize)) % parseInt(req.body.numPlayers) !== 0){
-            console.log("Game id set to " + gameID);  
-            console.log("Kitty size error");         
+            if(debug){
+                console.log("Game id set to " + gameID);  
+                console.log("Kitty size error");         
+            }
+            
             res.render('home_page', {message: "Incorrect kitty size", createGame: true});
         }
         else{
@@ -262,17 +316,21 @@ app.post('/', function(req, res){
             gameID = req.body.gameID; //unique game identifier
             numPlayers = parseInt(req.body.numPlayers);
             kittySize = parseInt(req.body.kittySize);
-            playerIndices = [...Array(numPlayers).keys()]
-            
+            playerIndices = [...Array(numPlayers).keys()]       
             indices = [...Array(54*req.body.numDecks).keys()];
             constants.shuffleArray(indices);
-            console.log(indices.length + " cards randomized!");
-            console.log("Game ID: " +gameID);
+            if(debug){
+                console.log(indices.length + " cards randomized!");
+                console.log("Game ID: " +gameID);
+            }          
             res.redirect("/");
         } 
     }
     else{
-        console.log(req.body);
+        if(debug){
+            console.log(req.body);
+        }
+        
         if(req.body.gameID !== gameID){
             res.render('home_page', {
                 message: "Invalid game ID",
@@ -311,46 +369,6 @@ app.post('/', function(req, res){
     }
 });
 
-function assocSockIDwithName(playerName, socketID){
-    console.log(players);
-    for(let i = 0; i<players.length; i++){
-        var player = players[i];
-        if(players[i] !== undefined && playerName === player.getName()){
-            player.setSocketID(socketID);
-            sockIDtoPlayer[socketID] = player;
-            console.log(sockIDtoPlayer);
-            console.log(player);
-            console.log("Name " + playerName + " set for " + socketID);
-            return true;
-            
-        }
-        
-    }
-    return false;
-}
-
-function isSocketAssociated(socketID){
-    for(let i = 0; i<players.length; i++){
-        if(players[i] != undefined && players[i].getSocketID() === socketID){
-            return true;
-        }      
-    }
-    return false;
-}
-
-function getPlayerNamesAndNumbers(){
-    var playerNamesAndNumbers = [];
-    for(let i = 0; i<players.length; i++){
-        if(players[i] !== undefined){
-            playerNamesAndNumbers[players[i].getNumber()] = new Object({
-                name: players[i].getName(),
-                number: players[i].getNumber()
-            });
-        }       
-    } // end for loop
-    return playerNamesAndNumbers;
-}
-
 app.get('/play/:id', function(req, res){
     //TODO: convert this to cookie? Not sure better or worse
     if(gameID === ""){
@@ -365,19 +383,25 @@ app.get('/play/:id', function(req, res){
 });
 
 io.on('connection', function(socket){
-    console.log("A user has connected, socket id " + socket.id);
+    console.log("CONNECTION: A user has connected, socket id: " + socket.id);
     
     socket.on('disconnect', function(){
         //to do: diassociate socket id with player to allow for reconnections
-        console.log('user disconnected');
+        console.log('CONNECTION: user disconnected');
     });
     socket.on('chat message', function(msg){
-        console.log('message sent: ' + "Message: " +msg);
+        if(debug){
+            console.log('message sent: ' + "Message: " +msg);
+        }
+        
 
         //don't accept messages until player self-identifies
         if(!isSocketAssociated(socket.id)){
             //if we have not connected socket to a player...
-            console.log("Trying to associating socket with player...");
+            if(debug){
+                console.log("Trying to associating socket with player...");
+            }
+            
             if(!assocSockIDwithName(msg, socket.id))
             {
                 socket.emit('chat message', "(Private Msg) ERROR: invalid name or team, try again");
@@ -386,14 +410,15 @@ io.on('connection', function(socket){
                 socket.emit('chat message', "(Private Msg) SUCCESS: Name set, waiting for other players to join");
                 socket.emit('set player details', sockIDtoPlayer[socket.id].getName(), sockIDtoPlayer[socket.id].getNumber(), numPlayers);
                 io.emit('add sidebar player', getPlayerNamesAndNumbers());
-                if(allPlayersPresent()){
-                    console.log("num players: " + numPlayers + "; players.length: " + players.length);
+                if(allPlayersPresent()){                  
                     io.emit('chat message', "STATUS: All players have joined!");
                     setCurrPlayerTurn(players[0].getSocketID());
-                    console.log("It is player " + currPlayerAllowedToDraw + "'s turn");
+                    if(debug){
+                        console.log("num players: " + numPlayers + "; players.length: " + players.length);
+                        console.log("It is player " + currPlayerAllowedToDraw + "'s turn");
+                    }
                     io.emit('update sidebar with active', currPlayerAllowedToDraw);
-                    io.to(`${players[0].getSocketID()}`).emit('enable draw button', currPlayerAllowedToDraw); //by default, first player is enabled
-                    
+                    io.to(`${players[0].getSocketID()}`).emit('enable draw button', currPlayerAllowedToDraw); //by default, first player is enabled                 
                     io.emit('enable game settings');
                 }
             }
@@ -421,12 +446,16 @@ io.on('connection', function(socket){
         //implement turn-based logic here: can't draw until it's your turn
         if(currCard < 54*numDecks-kittySize){
             let index = currCard;
-            console.log(index);
-            selectedCardStr = constants.allCards[indices[index]%54];
-            selectedCardObj = constants.allCardsObj[indices[index]%54];
-            
+            if(debug){
+                console.log(index);
+            }           
+            // selectedCardStr = constants.allCards[indices[index]%54];
+            selectedCardObj = constants.allCardsObj[indices[index]%54];         
             sockIDtoPlayer[sockId].addCardToHand(selectedCardObj);
-            console.log("Dealt card " + selectedCardStr + " to player " + sockId);
+            // if(debug){
+            //     console.log("Dealt card " + selectedCardStr + " to player " + sockId);
+            // }
+            
             // socket.emit('serve draw card', selectedCardStr);
             socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());
             currCard += 1;
@@ -436,17 +465,21 @@ io.on('connection', function(socket){
                 gameState = 1;
             }
             else{
-                incTurnToNextPlayer();
-                console.log(players[currPlayerAllowedToDraw].getSocketID());
+                incTurnToNextPlayer();            
                 io.to(`${players[currPlayerAllowedToDraw].getSocketID()}`).emit('enable draw button', players[currPlayerAllowedToDraw].getNumber());
-                console.log("Making it player " + currPlayerAllowedToDraw + "'s turn");
+                if(debug){
+                    console.log(players[currPlayerAllowedToDraw].getSocketID());
+                    console.log("Making it player " + currPlayerAllowedToDraw + "'s turn");
+                }
                 io.emit('update sidebar with active', currPlayerAllowedToDraw);
             }           
         }
         else{
             sockIDtoPlayer[sockId].sortCurrCards();
             socket.emit('serve card array', sockIDtoPlayer[sockId].flattenCardArrayRetString());         
-            console.log("No more cards to draw!");
+            if(debug){
+                console.log("No more cards to draw!");
+            }
         }      
     });
 
@@ -474,7 +507,10 @@ io.on('connection', function(socket){
     });
 
     socket.on('set game settings', function(starterChecked, trumpSuit, trumpRank){
-        console.log(starterChecked + " " + trumpSuit);
+        if(debug){
+            console.log(starterChecked + " " + trumpSuit);
+        }
+        
         if(starterChecked === "starter"){
             currentStarter = sockIDtoPlayer[socket.id];
             currPlayerAllowedToDraw = sockIDtoPlayer[socket.id].getNumber(); //update who's currently allowed to draw
@@ -501,12 +537,11 @@ io.on('connection', function(socket){
     });
 
     socket.on('draw kitty', function(sockId){
-        console.log("Attemping on server side");
         if(currCard >= 54*numDecks-kittySize && currCard<54*numDecks){
-            console.log("Drawing from kitty");
+            // console.log("Drawing from kitty");
             while(currCard<54*numDecks){
                 let index = currCard;
-                console.log(index);
+                // console.log(index);
                 selectedCardStr = constants.allCards[indices[index]%54];
                 selectedCardObj = constants.allCardsObj[indices[index]%54];
                 
@@ -537,7 +572,7 @@ io.on('connection', function(socket){
     });
 
     socket.on('play card req', function(playCardReq){
-        console.log("Got card play request from " + socket.id);
+        // console.log("Got card play request from " + socket.id);
         io.emit('chat message', constants.sixtyDashes);
         for(let i = 0; i< playCardReq.length; i++){
             // console.log(playCardReq[i]);
@@ -550,7 +585,7 @@ io.on('connection', function(socket){
     });
 
     socket.on('undo card play', function(playCardReq){
-        console.log("UNDO: Got card undo request from " + socket.id);
+        // console.log("UNDO: Got card undo request from " + socket.id);
         io.emit('chat message', "UNDO: Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
         for(let i = 0; i< playCardReq.length; i++){
             sockIDtoPlayer[socket.id].addCardToHand(constants.cardStrToObj(playCardReq[i]));
@@ -569,5 +604,5 @@ app.get('*', function(req, res){
 
 
 http.listen(port, function(){
-    console.log('Listening on port ' +port);
+    console.log('STATUS: Listening on port ' +port);
 });
