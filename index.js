@@ -23,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(upload.array()); 
 
 app.use('/play', express.static(path.join(__dirname + '/images/')));
+app.use('/play', express.static(path.join(__dirname + '/')));
 // ************************ END REQUIRE STATEMENTS AND APP SETUP
 
 // ** Game settings
@@ -211,11 +212,16 @@ function setCurrPlayerTurn(sockId){
 
 //to do: create a singleton class that's basically a wrapper for all the players...
 function allPlayersPresent(){
+    if(numPlayers !== players.length){
+        return false;
+    }
     for(let i = 0; i<players.length; i++){
+        console.log(players[i]);
         if(players[i] == undefined || players[i] == null || players[i].getSocketID() == ""){
             return false;
         }
     }
+    console.log("Returning true");
     return true;
 }
 
