@@ -264,7 +264,7 @@ $(function () {
             img.id = fileName+"played"
         }
         if(imageNum === 0){
-            img.style = "border:2px solid black;width:6%;height:auto";
+            img.style = "border:2px solid black;width:5%;height:auto";
         }
         else{
             var firstImage = $('#arrayImages img').first()[0];
