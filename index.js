@@ -585,13 +585,13 @@ io.on('connection', function(socket){
     });
 
     socket.on('undo card play', function(playCardReq){
-        // console.log("UNDO: Got card undo request from " + socket.id);
-        io.emit('chat message', "UNDO: Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
+        // console.log("UNDO: Got card undo request from " + socket.id);      
         for(let i = 0; i< playCardReq.length; i++){
             sockIDtoPlayer[socket.id].addCardToHand(constants.cardStrToObj(playCardReq[i]));
             socket.emit('serve card array', sockIDtoPlayer[socket.id].flattenCardArrayRetString());
             io.emit('chat message', playCardReq[i]);
         }
+        io.emit('chat message', "UNDO: Player " + sockIDtoPlayer[socket.id].getName() + " undid play with following cards:");
     })
     //emit only to that socket
     socket.emit('chat message', 'GAME: Welcome, please enter your name again.');

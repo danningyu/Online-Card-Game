@@ -1,21 +1,22 @@
 html
     head
         title Welcome to Card Game
+
     body
         if createGame
             h3 Create a game! 
             h4 #{message}
             form(action = "/" method = "POST")
-                div 
-                    input(name = "gameID" type = "text" autocomplete="off" required placeholder = "Unique Game ID")
+                div(id = "gameIDdiv")
+                    input(name = "gameID" type = "text" autocomplete="off" required placeholder = "Unique Game ID" style="width:175px")
                 div
-                    input(name = "numPlayers" type = "text" autocomplete="off" required placeholder = "Number of Players" pattern="^[0-9]*$")
+                    input(name = "numPlayers" type = "text" autocomplete="off" required placeholder = "Number of Players" pattern="^[0-9]*$" style="width:175px")
                 div
-                    input(name = "numDecks" type = "text" required placeholder = "Number of Decks" pattern="^[0-9]*$")
+                    input(name = "numDecks" type = "text" required placeholder = "Number of Decks" pattern="^[0-9]*$" style="width:175px")
                 div
-                    input(name = "kittySize" type = "text" required placeholder = "Kitty size" pattern="^[0-9]*$")
+                    input(name = "kittySize" type = "text" required placeholder = "Kitty size" pattern="^[0-9]*$" style="width:175px")
                 div
-                    button(type = "submit") Create Game!
+                    button(type = "submit" style="padding:5px;width:175px;") Create Game!
                 //- input(name = "id" type = "text" required placeholder = "User ID")
                 //- input(name = "password" type = "password" required placeholder = "Password")
                 //- button(type = "submit") Sign Up
@@ -49,4 +50,4 @@ html
                 //-             label Player #{val} &nbsp;&nbsp;&nbsp;
                 //- div Why count from 0? Because this game was written by a lazy CS major.
                 div
-                    button(type = "submit") Join Game!
+                    button(type = "submit" style="padding:5px;") Join Game!

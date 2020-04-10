@@ -147,9 +147,10 @@ $(function () {
         console.log(playerSidebarID);
 
         var childElem = document.getElementById("sidebarhtml").children;
-        for(let i = 0; i<childElem.length; i++){
+        for(let i = 1; i<childElem.length; i++){
             childElem[i].style="color:red";
         }
+        // document.getElementById("sideheader").style="color:black";
         document.getElementById(playerSidebarID).style = "color:green;font-weight:bold";
         
     });
@@ -263,7 +264,7 @@ $(function () {
             img.id = fileName+"played"
         }
         if(imageNum === 0){
-            img.style = "border:2px solid black;width:4.75%;height:auto";
+            img.style = "border:2px solid black;width:6%;height:auto";
         }
         else{
             var firstImage = $('#arrayImages img').first()[0];
